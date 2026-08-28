@@ -231,7 +231,7 @@ class ChatbotService {
 
     // 3. Product Search
     if (this.isProductSearchQuery(q)) {
-      return await this.handleProductSearch({ q });
+      return await this.handleProductSearch({ q, history: history || [] });
     }
 
     // 4. Cart & Wishlist
@@ -269,7 +269,7 @@ class ChatbotService {
       };
     }
 
-    // 8. Conversational greetings ("how are you", "good morning") — try Ollama, then smart fallback
+    // 8. Conversational greetings ("how are you", "good morning") — try Ollama, then Gemini, then smart fallback
     if (this.isConversationalGreeting(q)) {
       const aiResult = await ollamaService.chat(query, history || []);
       if (aiResult.success) {
@@ -283,7 +283,22 @@ class ChatbotService {
           ]
         };
       }
-      // Ollama unavailable — use smart natural fallback
+      // Ollama unavailable — try Gemini
+      if (geminiService.isConfigured()) {
+        const geminiResult = await geminiService.chat(query, history || []);
+        if (geminiResult.success) {
+          return {
+            reply: geminiResult.response,
+            type: 'AI_RESPONSE',
+            aiPowered: true,
+            actions: [
+              { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+              { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+            ]
+          };
+        }
+      }
+      // Both unavailable — use smart natural fallback
       return this.getSmartFallback(q, query, user);
     }
 
@@ -317,21 +332,13 @@ class ChatbotService {
       return this.getSmartFallback(q, query, user);
     }
 
-    // ─── Default: Send to Ollama AI for intelligent response ───
+    // ─── Default: Send to Ollama AI, then Gemini, for intelligent response ───
     const aiResult = await ollamaService.chat(query, history || []);
 
     if (aiResult.success) {
-      // AI responded — combine with product suggestions for extra value
-      const suggestedProducts = await prisma.product.findMany({
-        where: { status: 'PUBLISHED', isVisible: true },
-        take: 2,
-        include: { images: true }
-      });
-
       return {
         reply: aiResult.response,
         type: 'AI_RESPONSE',
-        products: suggestedProducts.length > 0 ? suggestedProducts : undefined,
         aiPowered: true,
         actions: [
           { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
@@ -340,8 +347,24 @@ class ChatbotService {
       };
     }
 
-    // Ollama unavailable — use smart fallback instead of "I searched our catalog"
-    console.warn('[ChatbotService] Ollama unavailable, using smart fallback. Error:', aiResult.error);
+    // Ollama unavailable — try Gemini
+    if (geminiService.isConfigured()) {
+      const geminiResult = await geminiService.chat(query, history || []);
+      if (geminiResult.success) {
+        return {
+          reply: geminiResult.response,
+          type: 'AI_RESPONSE',
+          aiPowered: true,
+          actions: [
+            { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+            { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+          ]
+        };
+      }
+    }
+
+    // Both AI providers unavailable — use smart fallback
+    console.warn('[ChatbotService] All AI providers unavailable, using smart fallback');
     return this.getSmartFallback(q, query, user);
   }
 
@@ -360,7 +383,7 @@ class ChatbotService {
       return { streamed: false, data: await this.handleOrderSupport({ q, user }) };
     }
     if (this.isProductSearchQuery(q)) {
-      return { streamed: false, data: await this.handleProductSearch({ q }) };
+      return { streamed: false, data: await this.handleProductSearch({ q, history: history || [] }) };
     }
     if (this.isCartQuery(q)) {
       return { streamed: false, data: this.handleCartHelp({ user }) };
@@ -389,13 +412,19 @@ class ChatbotService {
         actions: [{ label: 'View Offers & Coupons', action: 'OFFERS' }, { label: 'Find a Product', action: 'SEARCH_PRODUCT' }]
       }};
     }
-    // Conversational greetings ("how are you", "good morning") — stream from Ollama for natural reply
+    // Conversational greetings ("how are you", "good morning") — stream from Ollama, fallback to Gemini
     if (this.isConversationalGreeting(q)) {
       const streamResult = await ollamaService.chatStream(query, history || [], onChunk, signal);
       if (streamResult.success) {
         return { streamed: true, fullResponse: streamResult.fullResponse };
       }
-      // Ollama unavailable — return smart natural fallback
+      // Ollama unavailable — try Gemini non-streaming
+      if (geminiService.isConfigured()) {
+        const geminiResult = await geminiService.chat(query, history || []);
+        if (geminiResult.success) {
+          return { streamed: false, data: { reply: geminiResult.response, type: 'AI_RESPONSE', aiPowered: true, actions: [{ label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' }, { label: '👨‍💻 Human Support', action: 'ESCALATE' }] } };
+        }
+      }
       return { streamed: false, data: this.getSmartFallback(q, query, user) };
     }
     if (this.isGreetingQuery(q)) {
@@ -421,7 +450,7 @@ class ChatbotService {
       return { streamed: false, data: this.getSmartFallback(q, query, user) };
     }
 
-    // Free-form query — stream from Ollama
+    // Free-form query — try Ollama stream, then Gemini, then fallback
     const streamResult = await ollamaService.chatStream(
       query,
       history || [],
@@ -433,8 +462,16 @@ class ChatbotService {
       return { streamed: true, fullResponse: streamResult.fullResponse };
     }
 
-    // Ollama unavailable — return smart fallback instead of "I searched our catalog"
-    console.warn('[ChatbotService] Ollama stream unavailable, using smart fallback. Error:', streamResult.error);
+    // Ollama unavailable — try Gemini non-streaming
+    if (geminiService.isConfigured()) {
+      const geminiResult = await geminiService.chat(query, history || []);
+      if (geminiResult.success) {
+        return { streamed: false, data: { reply: geminiResult.response, type: 'AI_RESPONSE', aiPowered: true, actions: [{ label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' }, { label: '👨‍💻 Human Support', action: 'ESCALATE' }] } };
+      }
+    }
+
+    // All AI providers unavailable — smart fallback
+    console.warn('[ChatbotService] All AI providers unavailable in stream mode, using smart fallback');
     return {
       streamed: false,
       data: this.getSmartFallback(q, query, user)
@@ -576,13 +613,15 @@ class ChatbotService {
   }
 
   /**
-   * Get Ollama AI status for admin panel.
+   * Get AI status for admin panel — includes both Ollama and Gemini status.
    */
   async getAIStatus() {
-    const available = await ollamaService.isAvailable();
+    const ollamaAvailable = await ollamaService.isAvailable();
     return {
       ...ollamaService.getStatus(),
-      available,
+      ollamaAvailable,
+      gemini: geminiService.getStatus(),
+      available: ollamaAvailable || geminiService.isConfigured(),
     };
   }
 }
