@@ -58,6 +58,7 @@ const CompareDrawer = () => {
                     onClick={() => dispatch(removeFromCompare(item.id))}
                     className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] shadow"
                     title="Remove"
+                    aria-label={`Remove ${item.name} from comparison`}
                   >
                     <FiX />
                   </button>
@@ -85,6 +86,7 @@ const CompareDrawer = () => {
           <button
             onClick={() => dispatch(clearCompare())}
             className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+            aria-label="Clear all compared products"
           >
             <FiTrash2 className="w-3.5 h-3.5" /> Clear
           </button>
@@ -92,6 +94,7 @@ const CompareDrawer = () => {
           <button
             onClick={() => navigate('/compare')}
             className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-gold-500 to-amber-500 text-black font-bold text-xs hover:from-gold-400 transition shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+            aria-label={`Compare ${compareItems.length} products now`}
           >
             <span>Compare Now ({compareItems.length})</span>
             <FiArrowRight className="w-4 h-4" />

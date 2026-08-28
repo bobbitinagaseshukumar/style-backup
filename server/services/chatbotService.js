@@ -570,7 +570,11 @@ class ChatbotService {
           return {
             reply: `⚖️ **AI Product Comparison & Decision Assistant**:\n${compareResult.recommendation.aiExplanation}`,
             type: 'COMPARISON_CARD',
-            comparison: compareResult.data || compareResult,
+            comparison: {
+              products: compareResult.products,
+              recommendation: compareResult.recommendation,
+              count: compareResult.count
+            },
             aiPowered: true,
             actions: [{ label: 'View Full Comparison', action: 'VIEW_COMPARE', link: '/compare' }]
           };
