@@ -31,8 +31,8 @@ const ProductGrid = ({ products, loading, skeletonCount = 8 }) => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-      {products.map((product) => (
-        <ProductCard key={product._id} product={product} />
+      {products.map((product, idx) => (
+        <ProductCard key={product.id || product._id || product.slug || idx} product={product} />
       ))}
     </div>
   );

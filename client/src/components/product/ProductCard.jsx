@@ -18,7 +18,8 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const user = useSelector(state => state.auth?.user);
   const wishlistItems = useSelector(state => state.wishlist?.items || []);
-  const isWishlisted = wishlistItems.some(item => (item._id || item.id) === product._id);
+  const productId = product.id || product._id;
+  const isWishlisted = wishlistItems.some(item => (item._id || item.id) === productId);
   
   const [imageLoaded, setImageLoaded] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
@@ -32,7 +33,7 @@ const ProductCard = ({ product }) => {
       return;
     }
     if (isWishlisted) {
-      dispatch(removeFromWishlist(product._id));
+      dispatch(removeFromWishlist(productId));
       toast.info('Removed from wishlist');
     } else {
       dispatch(addToWishlist(product));
@@ -49,10 +50,10 @@ const ProductCard = ({ product }) => {
       return;
     }
     dispatch(addToCart({
-      id: product._id,
+      id: productId,
       name: product.name,
-      price: product.salePrice || product.price,
-      image: product.images?.[0]?.url,
+      price: product.discountPrice || product.salePrice || product.price,
+      image: product.images?.[0]?.url || product.image,
       quantity: 1,
     }));
     setAddedToCart(true);
@@ -61,11 +62,11 @@ const ProductCard = ({ product }) => {
   };
 
   const price = product.price || 0;
-  const salePrice = product.salePrice || 0;
-  const finalPrice = salePrice > 0 ? salePrice : price;
-  const discountPercent = salePrice > 0 && price > salePrice 
+  const salePrice = product.discountPrice || product.salePrice || 0;
+  const finalPrice = salePrice > 0 && salePrice < price ? salePrice : price;
+  const discountPercent = product.discountPercent || (salePrice > 0 && price > salePrice 
     ? Math.round(((price - salePrice) / price) * 100) 
-    : 0;
+    : 0);
   const savingsAmount = price > finalPrice ? price - finalPrice : 0;
   const rating = product.ratings || product.rating || 0;
 

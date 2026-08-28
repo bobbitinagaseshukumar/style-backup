@@ -89,8 +89,10 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
       whereClause.status = status.toUpperCase();
     }
   } else {
-    // Guest & Customer public storefront view: Show strictly active, non-archived products
-    whereClause.status = { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] };
+    // Guest & Customer public storefront view: Show active/published non-draft products
+    andConditions.push({
+      status: { notIn: ['DELETED', 'ARCHIVED', 'DRAFT', 'deleted', 'archived', 'draft'] }
+    });
   }
 
   // Text Search
@@ -110,28 +112,24 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
   const targetCategory = category || categoryId;
   if (targetCategory && targetCategory !== 'ALL' && targetCategory !== 'all' && targetCategory !== 'undefined' && targetCategory !== 'null') {
     const catVal = String(targetCategory).trim();
-    if (isUUID(catVal)) {
-      andConditions.push({ categoryId: catVal });
-    } else {
-      const keywords = catVal.toLowerCase().replace(/-/g, ' ').split(' ').filter(k => k.length > 2);
-      andConditions.push({
-        OR: [
-          { categoryId: catVal },
-          {
-            category: {
-              OR: [
-                { id: catVal },
-                { slug: { equals: catVal, mode: 'insensitive' } },
-                { slug: { contains: catVal, mode: 'insensitive' } },
-                { name: { contains: catVal, mode: 'insensitive' } },
-                ...keywords.map(kw => ({ name: { contains: kw, mode: 'insensitive' } })),
-                ...keywords.map(kw => ({ slug: { contains: kw, mode: 'insensitive' } }))
-              ]
-            }
+    const keywords = catVal.toLowerCase().replace(/-/g, ' ').split(' ').filter(k => k.length > 2);
+    andConditions.push({
+      OR: [
+        { categoryId: catVal },
+        {
+          category: {
+            OR: [
+              { id: catVal },
+              { slug: { equals: catVal, mode: 'insensitive' } },
+              { slug: { contains: catVal, mode: 'insensitive' } },
+              { name: { contains: catVal, mode: 'insensitive' } },
+              ...keywords.map(kw => ({ name: { contains: kw, mode: 'insensitive' } })),
+              ...keywords.map(kw => ({ slug: { contains: kw, mode: 'insensitive' } }))
+            ]
           }
-        ]
-      });
-    }
+        }
+      ]
+    });
   }
 
   // SubCategory Filtering (Supports UUID, subCategoryId param, slug, and subcategory name)
