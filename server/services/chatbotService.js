@@ -5,24 +5,14 @@ const productIntentService = require('./productIntentService');
 const stylistService = require('./stylistService');
 const visualSearchService = require('./visualSearchService');
 const comparisonService = require('./comparisonService');
+const cartOptimizerService = require('./cartOptimizerService');
+const personalizedOfferService = require('./personalizedOfferService');
 
 /**
  * Enterprise Intelligent AI Shopping Assistant Service
- * Natural language intent parser, live product database search, order status checker,
- * policy engine, and human support escalation with ticket generation.
- * 
- * When Ollama is available: free-form queries get true AI responses.
- * When Ollama is unavailable (production/Render): intelligent local fallbacks handle
- * conversational queries, greetings, thanks, and common questions without showing
- * the misleading "I searched our catalog" message for non-product queries.
  */
 class ChatbotService {
 
-  /* ══════════════════════════════════════════════════════════════════
-     WORD-BOUNDARY MATCH HELPERS
-     Prevents false positives like "this" matching "hi", "history" matching "hi",
-     "undertime" matching "time", etc.
-  ══════════════════════════════════════════════════════════════════ */
   _matchesWord(text, word) {
     const regex = new RegExp(`\\b${word}\\b`, 'i');
     return regex.test(text);
@@ -32,9 +22,16 @@ class ChatbotService {
     return words.some(w => this._matchesWord(text, w));
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     INTENT DETECTORS (improved with word-boundary matching)
-  ══════════════════════════════════════════════════════════════════ */
+  isCartBudgetQuery(q) {
+    return (
+      (q.includes('cart') || q.includes('reduce') || q.includes('reduce my') || q.includes('cut') || q.includes('lower') || q.includes('expensive')) &&
+      (q.includes('budget') || q.includes('expensive') || q.includes('over') || /\b(under|below|less than|only have|have|max|limit|₹|\d+)\b/i.test(q))
+    ) || /reduce my cart|keep my cart|cart is too expensive|cart budget|reduce cart|help me reduce/i.test(q);
+  }
+
+  isOfferQuery(q) {
+    return this._matchesAny(q, ['offer', 'offers', 'coupon', 'coupons', 'discount', 'discounts', 'deal', 'deals', 'promo', 'promotional', 'best deal', 'best offer', 'apply coupon', 'apply offer']);
+  }
 
   isComparisonQuery(q) {
     return this._matchesAny(q, ['compare', 'vs', 'versus', 'which is best', 'which one is best', 'which is cheapest', 'which has highest rating', 'which is best value', 'which should i buy', 'which one should i buy', 'difference between', 'better choice']);
@@ -542,6 +539,44 @@ class ChatbotService {
         extractedIntent = await geminiService.extractIntent(q, history);
       } catch (gemErr) {
         console.warn('[ChatbotService] Gemini intent extraction fallback:', gemErr.message);
+      }
+    }
+
+    // ─── PHASE 9: AI Smart Cart & Budget Optimizer Routing ───
+    if (this.isCartBudgetQuery(q) || extractedIntent?.intent === 'cart_budget_optimization') {
+      const budgetMatch = q.match(/(?:₹|rs\.?|inr)?\s*(\d{3,6})/i);
+      const maxBudget = budgetMatch ? parseFloat(budgetMatch[1]) : (extractedIntent?.maxPrice || 3500);
+
+      const cartOptRes = await cartOptimizerService.optimizeCart({
+        maxBudget,
+        userPrompt: q
+      });
+
+      if (cartOptRes.success) {
+        return {
+          reply: `🛒 **AI Smart Cart & Budget Optimizer**:\n${cartOptRes.aiExplanation || cartOptRes.message}`,
+          type: 'CART_OPTIMIZER_CARD',
+          cartOptimization: cartOptRes,
+          aiPowered: true,
+          actions: [{ label: 'Open Cart Optimizer', action: 'VIEW_CART', link: '/cart' }]
+        };
+      }
+    }
+
+    // ─── PHASE 10: AI Personalized Offers & Smart Deals Routing ───
+    if (this.isOfferQuery(q) || extractedIntent?.intent === 'offers') {
+      const offerRes = await personalizedOfferService.getPersonalizedOffers({
+        userPrompt: q
+      });
+
+      if (offerRes.success) {
+        return {
+          reply: `🎁 **AI Personalized Offers & Smart Deals**:\n${offerRes.aiExplanation}`,
+          type: 'OFFER_CARD',
+          offers: offerRes,
+          aiPowered: true,
+          actions: [{ label: 'Apply Offers in Cart', action: 'VIEW_CART', link: '/cart' }]
+        };
       }
     }
 

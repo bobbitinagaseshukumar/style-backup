@@ -665,6 +665,98 @@ const ChatbotWidget = () => {
                     </div>
                   )}
 
+                  {/* Phase 9: AI Cart Budget Optimizer Card */}
+                  {(m.data?.type === 'CART_OPTIMIZER_CARD' || m.type === 'CART_OPTIMIZER_CARD' || m.data?.cartOptimization || m.cartOptimization) && (() => {
+                    const opt = m.data?.cartOptimization || m.cartOptimization;
+                    if (!opt) return null;
+                    return (
+                      <div className="mt-2 p-3 rounded-2xl bg-white/5 border border-gold-500/30 space-y-2 w-full max-w-[92%]">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                            <FiShoppingBag className="w-3.5 h-3.5" /> Budget Optimizer
+                          </h4>
+                          <span className="text-[9px] text-emerald-400 font-bold">
+                            Save ₹{opt.totalSavings || 0}
+                          </span>
+                        </div>
+
+                        {opt.suggestedReplacements?.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {opt.suggestedReplacements.map((rep, idx) => (
+                              <div key={idx} className="bg-black/40 p-2 rounded-xl border border-white/10 text-[10px] space-y-1">
+                                <div className="flex items-center justify-between text-gray-400 line-through">
+                                  <span className="truncate max-w-[130px]">{rep.originalItem.name}</span>
+                                  <span>₹{rep.originalItem.finalPrice}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-emerald-400 font-bold">
+                                  <span className="truncate max-w-[130px]">➔ {rep.suggestedProduct.name}</span>
+                                  <span>₹{rep.suggestedProduct.finalPrice}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                          <div className="text-[9px] text-gray-300">
+                            New Total: <span className="font-bold text-gold-400">₹{opt.newTotal || opt.currentTotal}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate('/cart');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-black font-bold text-[9px] hover:from-gold-400 transition cursor-pointer"
+                          >
+                            Open Cart Optimizer →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Phase 10: AI Personalized Offers Card */}
+                  {(m.data?.type === 'OFFER_CARD' || m.type === 'OFFER_CARD' || m.data?.offers || m.offers) && (() => {
+                    const off = m.data?.offers || m.offers;
+                    if (!off) return null;
+                    const best = off.bestOffer;
+                    return (
+                      <div className="mt-2 p-3 rounded-2xl bg-white/5 border border-gold-500/30 space-y-2 w-full max-w-[92%]">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                            <FiTag className="w-3.5 h-3.5" /> Recommended Offer
+                          </h4>
+                          {best && <span className="text-[9px] text-emerald-400 font-bold">Save ₹{best.discountAmount}</span>}
+                        </div>
+
+                        {best ? (
+                          <div className="bg-gradient-to-r from-amber-500/20 to-gold-500/10 p-2 rounded-xl border border-amber-400/30 text-[10px] space-y-1">
+                            <div className="flex items-center justify-between font-black text-amber-300">
+                              <span>CODE: {best.code}</span>
+                              <span>₹{best.discountAmount} OFF</span>
+                            </div>
+                            <p className="text-[9px] text-gray-300">{best.description || `Save ₹${best.discountAmount} on orders above ₹${best.minOrderAmount}`}</p>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-gray-400">Browse active store coupons in cart during checkout.</p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                          <span className="text-[9px] text-gray-400">Validated by store</span>
+                          <button
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate('/cart');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-black font-bold text-[9px] hover:from-gold-400 transition cursor-pointer"
+                          >
+                            Apply in Cart →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Phase 8: Smart AI Product Comparison Matrix */}
                   {(m.data?.type === 'COMPARISON_CARD' || m.type === 'COMPARISON_CARD' || m.data?.comparison || m.comparison) && (
                     <div className="mt-2 p-3 rounded-2xl bg-white/5 border border-gold-500/30 space-y-2 w-full max-w-[88%]">

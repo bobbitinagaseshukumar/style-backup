@@ -55,6 +55,43 @@ const recommendationService = require('../services/recommendationService');
 const stylistService = require('../services/stylistService');
 const visualSearchService = require('../services/visualSearchService');
 const comparisonService = require('../services/comparisonService');
+const cartOptimizerService = require('../services/cartOptimizerService');
+const personalizedOfferService = require('../services/personalizedOfferService');
+
+// ==================== PHASE 9: AI CART BUDGET OPTIMIZER ====================
+exports.optimizeCartBudget = asyncHandler(async (req, res, next) => {
+  const { maxBudget, guestCartItems, userPrompt } = req.body;
+  const userId = req.user?.id || null;
+
+  const result = await cartOptimizerService.optimizeCart({
+    userId,
+    guestCartItems,
+    maxBudget,
+    userPrompt
+  });
+
+  if (!result.success) {
+    return next(new ApiError(400, result.error || 'Cart budget optimization failed'));
+  }
+
+  res.status(200).json({ success: true, data: result });
+});
+
+// ==================== PHASE 10: AI PERSONALIZED OFFERS & SMART DEALS ====================
+exports.getPersonalizedOffers = asyncHandler(async (req, res, next) => {
+  const { cartTotal, categoryId, productId, userPrompt } = req.body;
+  const userId = req.user?.id || null;
+
+  const result = await personalizedOfferService.getPersonalizedOffers({
+    userId,
+    cartTotal,
+    categoryId,
+    productId,
+    userPrompt
+  });
+
+  res.status(200).json({ success: true, data: result });
+});
 
 // ==================== SMART PRODUCT COMPARISON ====================
 exports.compareProducts = asyncHandler(async (req, res, next) => {

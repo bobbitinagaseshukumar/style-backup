@@ -11,5 +11,6 @@ router.post('/sync', cartController.syncCart);
 router.put('/update', cartController.updateCartItem);
 router.delete('/remove/:itemId', cartController.removeCartItem);
 router.delete('/clear', cartController.clearCart);
+router.post('/apply-optimization', cartController.applyCartOptimization);
 
 module.exports = router;

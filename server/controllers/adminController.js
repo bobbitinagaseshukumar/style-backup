@@ -81,3 +81,19 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
 
   res.status(200).json({ success: true, data: logs });
 });
+
+// Phase 11 — AI Smart Inventory Intelligence & Demand Forecasting (Admin Decision Support)
+const inventoryForecastService = require('../services/inventoryForecastService');
+
+exports.getInventoryIntelligence = asyncHandler(async (req, res, next) => {
+  const { days, categoryId, search } = req.query;
+
+  const data = await inventoryForecastService.getInventoryIntelligence({
+    days: days ? parseInt(days, 10) : 30,
+    categoryId: categoryId || null,
+    search: search || ''
+  });
+
+  res.status(200).json({ success: true, data });
+});
+

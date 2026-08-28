@@ -247,19 +247,80 @@ exports.removeCartItem = asyncHandler(async (req, res, next) => {
   });
 });
 
-// ==================== 6. CLEAR CART ====================
-exports.clearCart = asyncHandler(async (req, res, next) => {
-  const cart = await prisma.cart.findUnique({ where: { userId: req.user.id } });
+// ==================== 7. APPLY CART BUDGET OPTIMIZATION (STEP 18 & 19) ====================
+exports.applyCartOptimization = asyncHandler(async (req, res, next) => {
+  const { replacements = [] } = req.body;
 
-  if (cart) {
-    await prisma.cartItem.deleteMany({
-      where: { cartId: cart.id }
-    });
+  if (!Array.isArray(replacements) || replacements.length === 0) {
+    return next(new ApiError(400, 'No replacement instructions provided'));
   }
+
+  let cart = await prisma.cart.findUnique({ where: { userId: req.user.id } });
+  if (!cart) {
+    cart = await prisma.cart.create({ data: { userId: req.user.id } });
+  }
+
+  // Step 19 & 20: Revalidate every suggested product against real PostgreSQL DB
+  for (const rep of replacements) {
+    const originalCartItemId = rep.originalCartItemId || rep.cartItemId;
+    const targetProductId = rep.suggestedProductId || rep.productId;
+
+    if (!targetProductId) continue;
+
+    // Fetch fresh product from DB (check stock & status)
+    const targetProduct = await prisma.product.findUnique({
+      where: { id: targetProductId }
+    });
+
+    if (!targetProduct || targetProduct.status !== 'PUBLISHED' || !targetProduct.isVisible) {
+      return next(new ApiError(400, `One of the suggested products is no longer available. Please refresh recommendations.`));
+    }
+
+    if (targetProduct.stock <= 0) {
+      return next(new ApiError(400, `'${targetProduct.name}' is currently out of stock. Please refresh recommendations.`));
+    }
+
+    // Step 21: Preserve original item quantity
+    const origItem = originalCartItemId
+      ? await prisma.cartItem.findFirst({ where: { id: originalCartItemId, cartId: cart.id } })
+      : null;
+
+    const qty = origItem ? origItem.quantity : Math.max(1, parseInt(rep.quantity || 1, 10));
+
+    // Remove old item if specified
+    if (origItem) {
+      await prisma.cartItem.delete({ where: { id: origItem.id } });
+    }
+
+    // Add or update new product in cart
+    const existingTargetItem = await prisma.cartItem.findFirst({
+      where: { cartId: cart.id, productId: targetProductId }
+    });
+
+    if (existingTargetItem) {
+      await prisma.cartItem.update({
+        where: { id: existingTargetItem.id },
+        data: { quantity: existingTargetItem.quantity + qty }
+      });
+    } else {
+      await prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          productId: targetProductId,
+          quantity: qty,
+          size: origItem?.size || null,
+          color: origItem?.color || null
+        }
+      });
+    }
+  }
+
+  const updatedCart = await getFreshCart(req.user.id);
 
   res.status(200).json({
     success: true,
-    message: 'Cart cleared',
-    data: { items: [] }
+    message: 'Cart optimized successfully! 🎉',
+    data: formatCartResponse(updatedCart)
   });
 });
+

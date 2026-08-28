@@ -11,7 +11,8 @@ router.post('/stylist', optionalAuth, aiController.getPersonalStylist);
 router.post('/visual-search', optionalAuth, aiController.searchByVisualImage);
 router.post('/compare', optionalAuth, aiController.compareProducts);
 router.get('/recommendations/:productId', aiController.getRecommendations);
-router.post('/back-in-stock', aiController.subscribeBackInStock);
+router.post('/cart-optimizer', optionalAuth, aiController.optimizeCartBudget);
+router.post('/offers', optionalAuth, aiController.getPersonalizedOffers);
 router.get('/admin/search-analytics', aiController.getSearchAnalytics);
 
 module.exports = router;
