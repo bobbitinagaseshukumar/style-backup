@@ -57,7 +57,7 @@ const visualSearchService = require('../services/visualSearchService');
 
 // ==================== OCCASION + BUDGET PERSONAL STYLIST ====================
 exports.getPersonalStylist = asyncHandler(async (req, res) => {
-  const { occasion, maxBudget, minBudget, category, color, style, isSingleProduct } = req.body;
+  const { occasion, maxBudget, minBudget, category, color, style, gender, isSingleProduct } = req.body;
   const result = await stylistService.buildOutfitRecommendations({
     occasion,
     maxBudget,
@@ -65,6 +65,7 @@ exports.getPersonalStylist = asyncHandler(async (req, res) => {
     category,
     color,
     style,
+    gender,
     isSingleProduct
   });
   res.status(200).json({ success: true, data: result });
@@ -76,9 +77,19 @@ exports.searchByVisualImage = asyncHandler(async (req, res, next) => {
   if (!imageBase64) {
     return next(new ApiError(400, 'Image file is required for visual search'));
   }
+
+  // Server-side image validation
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+  const safeMimeType = allowedMimeTypes.includes(mimeType) ? mimeType : 'image/jpeg';
+
+  // Reject oversized payloads (~5MB raw = ~6.7MB base64)
+  if (typeof imageBase64 === 'string' && imageBase64.length > 7 * 1024 * 1024) {
+    return next(new ApiError(400, 'Image is too large. Please upload an image under 5MB.'));
+  }
+
   const result = await visualSearchService.searchByImage({
     imageBase64,
-    mimeType: mimeType || 'image/jpeg',
+    mimeType: safeMimeType,
     textPrompt: textPrompt || '',
     maxBudget: maxBudget ? parseFloat(maxBudget) : null
   });

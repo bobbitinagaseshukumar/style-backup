@@ -117,6 +117,8 @@ class GeminiService {
     const prompt = `Convert this customer shopping request into a clean JSON filter object.
 ${historyContext ? `Previous Conversation:\n${historyContext}\n\n` : ''}Customer Request: "${cleanMessage}"
 
+IMPORTANT: If the customer references a previous conversation (e.g. "make it under ₹2000", "only black", "give me something cheaper"), combine the new request with the previous context.
+
 Return ONLY valid JSON matching this format:
 {
   "intent": "product_search",
@@ -127,8 +129,13 @@ Return ONLY valid JSON matching this format:
   "minPrice": null,
   "maxPrice": 1500,
   "occasion": null,
+  "gender": null,
   "sort": "relevance"
-}`;
+}
+
+For outfit/styling requests like "suggest an outfit for a wedding under ₹3000", use intent "outfit_recommendation".
+For occasion values use: wedding, party, festival, office, college, casual, formal, travel, birthday, date, traditional, engagement, gift, daily, bridal, interview.
+For gender values use: men, women, kids.`;
 
     try {
       const contents = [{ role: 'user', parts: [{ text: prompt }] }];

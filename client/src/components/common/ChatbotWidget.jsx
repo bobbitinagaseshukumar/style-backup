@@ -42,6 +42,8 @@ const ChatbotWidget = () => {
 
   const messagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [visualSearchLoading, setVisualSearchLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -306,6 +308,122 @@ const ChatbotWidget = () => {
       ...prev,
       { role: 'assistant', content: botData.reply || '' }
     ].slice(-10));
+  };
+
+  /**
+   * Handle visual search image upload — validates, converts to base64, calls API, shows detected attributes + results
+   */
+  const handleVisualSearchUpload = async (file) => {
+    // Step 3: Image validation — file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload a JPEG, PNG, or WebP image.');
+      return;
+    }
+    // Step 3: Image validation — file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+
+    // Show user message with image preview
+    const imageUrl = URL.createObjectURL(file);
+    const userMsg = {
+      id: `user-vs-${Date.now()}`,
+      sender: 'USER',
+      text: '📷 Find similar products',
+      imageUrl,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    // Step 12: Processing UI — show "Analyzing your style..."
+    const analyzingMsgId = `bot-vs-${Date.now()}`;
+    setMessages(prev => [...prev, {
+      id: analyzingMsgId,
+      sender: 'BOT',
+      text: '🔍 Analyzing your style...',
+      isStreaming: true,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }]);
+    setVisualSearchLoading(true);
+    setIsStreaming(true);
+
+    try {
+      // Convert image to base64
+      const base64Promise = new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const dataUrl = await base64Promise;
+      const base64Data = dataUrl.split(',')[1];
+
+      // Step 12: Update loading state
+      setMessages(prev => prev.map(m =>
+        m.id === analyzingMsgId ? { ...m, text: '✨ Finding similar products in our collection...' } : m
+      ));
+
+      // Call visual search API
+      const res = await api.post('/ai/visual-search', {
+        imageBase64: base64Data,
+        mimeType: file.type,
+      });
+
+      const result = res.data?.data;
+
+      if (result?.success && result?.products?.length > 0) {
+        // Step 14: Build detected attributes display
+        const detected = result.detected || {};
+        const attrTags = [
+          detected.productType,
+          detected.color,
+          detected.pattern,
+          detected.style,
+          detected.category
+        ].filter(Boolean);
+
+        const detectedText = attrTags.length > 0
+          ? `\n\n🏷️ Detected: ${attrTags.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(' • ')}`
+          : '';
+
+        setMessages(prev => prev.map(m =>
+          m.id === analyzingMsgId ? {
+            ...m,
+            text: `📸 Found ${result.products.length} similar products from our collection!${detectedText}`,
+            isStreaming: false,
+            data: { products: result.products, detected: result.detected },
+            aiPowered: true,
+          } : m
+        ));
+      } else {
+        // Step 10: No match — honest message, no fabrication
+        setMessages(prev => prev.map(m =>
+          m.id === analyzingMsgId ? {
+            ...m,
+            text: "I couldn't find a close match in our current collection. Try another image or browse our catalog!",
+            isStreaming: false,
+            actions: [{ label: 'Browse Catalog', action: 'BROWSE_ALL', link: '/categories' }],
+          } : m
+        ));
+      }
+    } catch (err) {
+      console.error('[VisualSearch] Error:', err);
+      // Step 26: Error handling — friendly message, no technical details
+      setMessages(prev => prev.map(m =>
+        m.id === analyzingMsgId ? {
+          ...m,
+          text: 'Visual search is temporarily unavailable. You can continue browsing normally.',
+          isStreaming: false,
+        } : m
+      ));
+    } finally {
+      setVisualSearchLoading(false);
+      setIsStreaming(false);
+      // Reset file input so same file can be uploaded again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const posClass = settings?.position === 'bottom-left'

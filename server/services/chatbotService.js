@@ -531,7 +531,7 @@ class ChatbotService {
     let extractedIntent = null;
     let replyText = null;
 
-    // 1. Try Gemini AI Intent Extraction
+    // 1. Try Gemini AI Intent Extraction (with conversation history for context preservation)
     if (geminiService.isConfigured()) {
       try {
         extractedIntent = await geminiService.extractIntent(q, history);
@@ -540,26 +540,77 @@ class ChatbotService {
       }
     }
 
-    // 2. Check if intent is outfit_recommendation or occasion+budget search
-    const isOutfitReq = extractedIntent?.intent === 'outfit_recommendation' ||
-                        q.includes('outfit') || q.includes('look') || q.includes('suggest an outfit');
+    // ─── Step 2: Comprehensive Occasion Detection ───
+    const occasionKeywords = [
+      'wedding', 'festive', 'festival', 'party', 'birthday', 'office', 'college',
+      'formal', 'casual', 'travel', 'date', 'traditional', 'engagement', 'reception',
+      'gift', 'daily', 'bridal', 'puja', 'diwali', 'holi', 'eid', 'christmas',
+      'onam', 'pongal', 'navratri', 'rakhi', 'anniversary', 'interview', 'meeting'
+    ];
 
-    if (isOutfitReq && (extractedIntent?.maxPrice || q.match(/under|below|\d{3,}/))) {
-      const budget = extractedIntent?.maxPrice || parseFloat((q.match(/(\d{3,})/)||[0, 3000])[1]);
-      const occasion = extractedIntent?.occasion || (q.includes('wedding') ? 'wedding' : q.includes('party') ? 'party' : 'festive');
+    // ─── Step 10: Detect single product vs outfit ───
+    const singleProductTypes = [
+      'shirt', 'saree', 'dress', 'kurta', 'jacket', 'shoe', 'jeans', 'trouser',
+      'top', 'pant', 'lehenga', 'sandal', 'heel', 'tshirt', 't-shirt', 'blazer',
+      'ring', 'necklace', 'earring', 'bracelet', 'chain', 'pendant', 'watch', 'bag'
+    ];
+    const isSingleProductRequest = singleProductTypes.some(p => {
+      const re = new RegExp(`\\b${p}s?\\b`, 'i');
+      return re.test(q);
+    }) && !this._matchesAny(q, ['outfit', 'look', 'suggest', 'combination', 'complete', 'build', 'style me', 'what to wear', 'what should i wear']);
+
+    // ─── Step 16: Detect occasion + budget for stylist routing ───
+    const hasOccasion = occasionKeywords.some(oc => this._matchesWord(q, oc)) ||
+                        extractedIntent?.occasion;
+    const hasBudget = extractedIntent?.maxPrice || /(?:under|below|within|budget|have|around|maximum)\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q) || /\d{3,}/.test(q);
+    const isOutfitReq = (extractedIntent?.intent === 'outfit_recommendation') ||
+                        this._matchesAny(q, ['outfit', 'look', 'suggest', 'combination', 'complete look', 'build', 'style me', 'what to wear', 'what should i wear']);
+
+    // Route to AI Stylist if occasion/budget present (even for single products with occasion)
+    if ((hasOccasion || isOutfitReq) && hasBudget) {
+      // Extract budget — prefer Gemini intent, fallback to regex
+      let budget = extractedIntent?.maxPrice || null;
+      if (!budget) {
+        const match = q.match(/(\d{3,})/);
+        budget = match ? parseFloat(match[1]) : 3000;
+      }
+
+      // Step 3: Handle "around ₹2000" — use ±25% range
+      if (/around/i.test(q) && budget) {
+        budget = Math.ceil(budget * 1.25);
+      }
+
+      // Extract occasion — prefer Gemini, fallback to keyword matching
+      let occasion = extractedIntent?.occasion || null;
+      if (!occasion) {
+        for (const oc of occasionKeywords) {
+          if (this._matchesWord(q, oc)) { occasion = oc; break; }
+        }
+      }
+      occasion = occasion || 'festive';
+
+      // Step 12: Extract gender
+      const gender = extractedIntent?.category ||
+                     (this._matchesAny(q, ['men', "men's", 'male', 'gents', 'boy']) ? 'men' :
+                      this._matchesAny(q, ['women', "women's", 'female', 'ladies', 'girl']) ? 'women' :
+                      this._matchesAny(q, ['kid', 'kids', "children's", 'child', 'boy', 'girl']) ? 'kids' : null);
+
+      // Step 11: Extract color
       const color = extractedIntent?.color || null;
-      const category = extractedIntent?.category || null;
 
       const outfitData = await stylistService.buildOutfitRecommendations({
         occasion,
         maxBudget: budget,
-        category,
-        color
+        category: gender,
+        color,
+        gender,
+        isSingleProduct: isSingleProductRequest
       });
 
+      // Handle outfit looks result
       if (outfitData.type === 'OUTFIT_LOOKS' && outfitData.looks?.length > 0) {
         return {
-          reply: `✨ Based on your ₹${budget} budget for a ${occasion}, here are complete outfit combinations from our collection:`,
+          reply: `✨ Based on your ₹${budget} budget for a ${occasion}, here are outfit combinations from our collection:`,
           type: 'OUTFIT_LOOKS',
           occasion,
           maxBudget: budget,
@@ -568,9 +619,35 @@ class ChatbotService {
           actions: [{ label: 'Browse Full Catalog', action: 'BROWSE_ALL', link: '/categories' }]
         };
       }
+
+      // Handle single products result
+      if (outfitData.type === 'SINGLE_PRODUCTS' && outfitData.products?.length > 0) {
+        const note = outfitData.note || '';
+        const suggestion = outfitData.suggestion || '';
+        replyText = note
+          ? `${note}${suggestion ? '\n\n' + suggestion : ''}`
+          : `✨ Here are ${occasion} options within ₹${budget}:`;
+        return {
+          reply: replyText,
+          type: 'PRODUCT_CARDS',
+          products: outfitData.products,
+          aiPowered: Boolean(extractedIntent),
+          actions: [{ label: 'Browse Full Catalog', action: 'BROWSE_ALL', link: '/categories' }]
+        };
+      }
+
+      // Step 18: No results — suggest increasing budget
+      if (outfitData.type === 'NO_RESULTS') {
+        return {
+          reply: `${outfitData.note}\n\n${outfitData.suggestion || ''}`,
+          type: 'INFO',
+          aiPowered: Boolean(extractedIntent),
+          actions: [{ label: 'Browse Full Catalog', action: 'BROWSE_ALL', link: '/categories' }]
+        };
+      }
     }
 
-    // 3. Perform Real Database Query via ProductIntentService
+    // 3. Perform Real Database Query via ProductIntentService (non-outfit requests)
     const products = await productIntentService.searchProductsByIntent(extractedIntent, q);
 
     // 4. Generate Natural Conversational Reply with Gemini or Fallback
@@ -582,7 +659,7 @@ class ChatbotService {
         replyText = `✨ Here are matching luxury items from our collection:`;
       }
     } else {
-      replyText = `I couldn't find an exact match in our current collection. Try increasing your budget, changing the color, or choosing another category!`;
+      replyText = `I couldn't find an exact match in our current collection. Try a different keyword, color, or category!`;
     }
 
     return {
