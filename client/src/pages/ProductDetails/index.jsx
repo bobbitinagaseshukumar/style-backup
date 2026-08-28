@@ -141,13 +141,23 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
   const imgRef = useRef();
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
 
-  const onMouseMove = useCallback((e) => {
+  const handleDoubleClick = useCallback((e) => {
+    e.preventDefault();
     if (!imgRef.current) return;
     const rect = imgRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     setMousePos({ x, y });
+    setZoom((prev) => !prev);
   }, []);
+
+  const handleMouseMoveWhenZoomed = useCallback((e) => {
+    if (!zoom || !imgRef.current) return;
+    const rect = imgRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setMousePos({ x, y });
+  }, [zoom]);
 
   const allImages = images?.length > 0 ? images : [{ url: 'https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image' }];
   const mainImg = allImages[selectedIdx]?.url || allImages[selectedIdx] || allImages[0]?.url;
@@ -164,13 +174,10 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
     const dy = touch.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.time;
 
-    // Only treat as swipe if horizontal distance > 40px, more horizontal than vertical, and within 500ms
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 500 && allImages.length > 1) {
       if (dx < 0) {
-        // Swipe left → next image
         onChange((selectedIdx + 1) % allImages.length);
       } else {
-        // Swipe right → previous image
         onChange((selectedIdx - 1 + allImages.length) % allImages.length);
       }
     }
@@ -181,30 +188,34 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
       {/* Main image card */}
       <div
         ref={imgRef}
-        onMouseEnter={() => setZoom(true)}
-        onMouseLeave={() => setZoom(false)}
-        onMouseMove={onMouseMove}
+        onDoubleClick={handleDoubleClick}
+        onMouseMove={handleMouseMoveWhenZoomed}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 cursor-zoom-in group shadow-sm touch-pan-y"
+        className={`relative aspect-[3/4] rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 group shadow-sm touch-pan-y ${zoom ? 'cursor-zoom-out' : 'cursor-pointer'}`}
       >
         <motion.img
           key={mainImg}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
           src={mainImg} alt=""
-          className="w-full h-full object-cover pointer-events-none"
+          className="w-full h-full object-cover pointer-events-none select-none"
           style={zoom ? {
-            transform: 'scale(2.4)',
+            transform: 'scale(2.2)',
             transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
-            transition: 'transform 0.08s ease',
-          } : { transition: 'transform 0.3s ease' }}
+            transition: 'transform 0.1s ease',
+          } : { transform: 'scale(1)', transition: 'transform 0.3s ease' }}
           draggable={false}
         />
+
+        {/* Double-click hint badge */}
+        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2.5 py-1 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition hidden md:block">
+          {zoom ? 'Double click to exit zoom' : 'Double click to zoom'}
+        </div>
 
         {/* Action icons overlay */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition">
           <button onClick={() => setFullscreen(true)} title="Expand Fullscreen"
-            className="p-2.5 rounded-xl bg-white/90 shadow-md text-gray-700 hover:bg-white transition">
+            className="p-2.5 rounded-xl bg-white/90 shadow-md text-gray-700 hover:bg-white transition cursor-pointer">
             <FiMaximize2 size={15} />
           </button>
         </div>
