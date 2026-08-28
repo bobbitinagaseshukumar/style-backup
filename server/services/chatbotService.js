@@ -1,5 +1,7 @@
 const prisma = require('../config/db');
 const ollamaService = require('./ollamaService');
+const geminiService = require('./geminiService');
+const productIntentService = require('./productIntentService');
 
 /**
  * Enterprise Intelligent AI Shopping Assistant Service
@@ -486,63 +488,40 @@ class ChatbotService {
     };
   }
 
-  async handleProductSearch({ q }) {
-    // Extract price constraint (e.g. "under 1000", "under 1500")
-    let maxPrice = null;
-    const priceMatch = q.match(/under\s*(?:₹|rs\.?|inr)?\s*(\d+)/i);
-    if (priceMatch) {
-      maxPrice = parseFloat(priceMatch[1]);
+  async handleProductSearch({ q, history = [] }) {
+    let extractedIntent = null;
+    let replyText = null;
+
+    // 1. Try Gemini AI Intent Extraction
+    if (geminiService.isConfigured()) {
+      try {
+        extractedIntent = await geminiService.extractIntent(q, history);
+      } catch (gemErr) {
+        console.warn('[ChatbotService] Gemini intent extraction fallback:', gemErr.message);
+      }
     }
 
-    // Clean search terms
-    const keywords = q
-      .replace(/under\s*(?:₹|rs\.?|inr)?\s*\d+/gi, '')
-      .replace(/show|me|i|want|need|recommend|a|some|for|in|looking|find/gi, '')
-      .trim();
+    // 2. Perform Real Database Query via ProductIntentService
+    const products = await productIntentService.searchProductsByIntent(extractedIntent, q);
 
-    let whereClause = { status: 'PUBLISHED', isVisible: true };
-    const andConditions = [];
-
-    if (keywords) {
-      andConditions.push({
-        OR: [
-          { name: { contains: keywords, mode: 'insensitive' } },
-          { description: { contains: keywords, mode: 'insensitive' } },
-          { shortDesc: { contains: keywords, mode: 'insensitive' } },
-          { tags: { contains: keywords, mode: 'insensitive' } },
-          { category: { name: { contains: keywords, mode: 'insensitive' } } }
-        ]
-      });
-    }
-
-    if (maxPrice) {
-      andConditions.push({ price: { lte: maxPrice } });
-    }
-
-    if (andConditions.length > 0) {
-      whereClause.AND = andConditions;
-    }
-
-    let products = await prisma.product.findMany({
-      where: whereClause,
-      take: 4,
-      include: { images: true, category: true }
-    });
-
-    // Fallback if strict search returned 0
-    if (products.length === 0) {
-      products = await prisma.product.findMany({
-        where: { status: 'PUBLISHED', isVisible: true },
-        take: 3,
-        include: { images: true, category: true }
-      });
+    // 3. Generate Natural Conversational Reply with Gemini or Fallback
+    if (products.length > 0) {
+      if (geminiService.isConfigured()) {
+        replyText = await geminiService.summarizeProducts(q, products);
+      }
+      if (!replyText) {
+        replyText = `✨ Here are matching luxury items from our collection:`;
+      }
+    } else {
+      replyText = `I couldn't find an exact match in our current collection. Try increasing your budget, changing the color, or choosing another category!`;
     }
 
     return {
-      reply: `✨ Here are the matching products from our database based on your request:`,
+      reply: replyText,
       type: 'PRODUCT_CARDS',
       products,
-      actions: [{ label: 'View All Products', action: 'BROWSE_ALL' }]
+      aiPowered: Boolean(extractedIntent),
+      actions: [{ label: 'Browse Full Catalog', action: 'BROWSE_ALL', link: '/categories' }]
     };
   }
 

@@ -24,6 +24,7 @@ const env = {
   // Ollama AI Integration
   OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'qwen2.5:3b',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };
 
 module.exports = env;

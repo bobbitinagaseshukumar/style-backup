@@ -11,14 +11,18 @@ import { addToCart } from '../../redux/cart/cartSlice';
 import api from '../../config/api';
 import { toast } from 'react-toastify';
 
+import { formatCurrency } from '../../utils/formatCurrency';
+import { formatImageUrl } from '../../utils/formatImageUrl';
+
 const QUICK_ACTIONS = [
-  { label: '🚚 Track My Order', query: 'Where is my order?' },
-  { label: '🔍 Find a Product', query: 'Show me trending luxury items' },
-  { label: '🔄 Return & Refund', query: 'What is your return policy?' },
-  { label: '📦 Shipping Info', query: 'What are the delivery times and charges?' },
-  { label: '💳 Payment Help', query: 'What payment options do you support?' },
-  { label: '🎟️ Offers & Coupons', query: 'Show available coupons and offers' },
-  { label: '👨‍💻 Human Support', query: 'I want to speak with human customer support' },
+  { label: '✨ Shirts under ₹1500', query: 'Find shirts under ₹1500' },
+  { label: '💍 Wedding outfit', query: 'Suggest a wedding outfit' },
+  { label: '👕 Casual wear', query: 'Show casual wear' },
+  { label: '🎁 Under ₹2000', query: 'Find something under ₹2000' },
+  { label: '🔥 What\'s trending?', query: 'Show trending luxury products' },
+  { label: '🚚 Track Order', query: 'Where is my order?' },
+  { label: '🔄 Returns', query: 'What is your return policy?' },
+  { label: '👨‍💻 Support', query: 'I want to speak with human support' },
 ];
 
 /**
@@ -388,6 +392,61 @@ const ChatbotWidget = () => {
                       <span className="inline-block w-1.5 h-3.5 bg-gold-400 ml-0.5 animate-pulse rounded-sm" />
                     )}
                   </div>
+
+                  {/* Verified PostgreSQL Product Cards */}
+                  {((m.data?.products && m.data.products.length > 0) || (m.products && m.products.length > 0)) && (
+                    <div className="mt-2 space-y-2 w-full max-w-[85%]">
+                      {(m.data?.products || m.products).slice(0, 4).map((prod) => {
+                        const imgUrl = prod.images?.[0]?.url || (Array.isArray(prod.images) ? prod.images[0] : null);
+                        const formattedImg = formatImageUrl(imgUrl);
+                        const displayPrice = prod.discountPrice || prod.price;
+
+                        return (
+                          <div
+                            key={prod.id}
+                            className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition group"
+                          >
+                            <img
+                              src={formattedImg}
+                              alt={prod.name}
+                              className="w-10 h-12 object-cover rounded-lg shrink-0 border border-amber-400/30"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[9px] text-amber-400 font-bold uppercase truncate">
+                                {prod.category?.name || 'Luxury Fashion'}
+                              </p>
+                              <h4 className="text-[11px] font-bold text-white truncate group-hover:text-amber-300 transition">
+                                {prod.name}
+                              </h4>
+                              <p className="text-[11px] font-black text-amber-400 mt-0.5">
+                                {formatCurrency(displayPrice)}
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <button
+                                onClick={() => {
+                                  setIsOpen(false);
+                                  navigate(`/product/${prod.slug || prod.id}`);
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-bold text-[9px] transition cursor-pointer"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => {
+                                  dispatch(addToCart({ product: prod, quantity: 1 }));
+                                  toast.success(`Added ${prod.name} to cart!`);
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[9px] transition cursor-pointer flex items-center gap-0.5"
+                              >
+                                <FiShoppingBag size={9} /> +Cart
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* AI badge + timestamp */}
                   <div className="flex items-center gap-1.5 mt-1 px-1">

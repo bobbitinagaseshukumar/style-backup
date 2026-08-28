@@ -13,6 +13,7 @@
     "prisma:studio": "npx prisma studio"
   },
   "dependencies": {
+    "@google/genai": "^2.19.0",
     "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.0.1",
