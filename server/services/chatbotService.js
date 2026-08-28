@@ -60,9 +60,14 @@ class ChatbotService {
            (q.includes('under') && /under\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q));
   }
 
-  /** Simple greetings: hi, hello, hey — get the welcome message */
+  /** Simple greetings: hi, hello, hlo, hey — get the welcome message */
   isGreetingQuery(q) {
-    return this._matchesAny(q, ['hi', 'hello', 'hey', 'greet', 'hii', 'hiii', 'namaste', 'howdy']);
+    return this._matchesAny(q, [
+      'hi', 'hello', 'hey', 'greet', 'hii', 'hiii', 'namaste', 'howdy',
+      'hlo', 'hllo', 'hloo', 'hola', 'helo', 'heloo', 'hiya', 'greetings',
+      'wassup', 'wsup', 'hy', 'hru', 'yo', 'sup', 'gm', 'gn', 'ga', 'ge',
+      'slm', 'salam', 'namaskar', 'vanakkam', 'pranam', 'heyya', 'heya', 'holla'
+    ]) || /^(h+l+o+|h+e+l+o+|h+i+|h+e+y+)\b/i.test(q);
   }
 
   /** Conversational greetings: how are you, good morning — get a natural response */
@@ -194,15 +199,30 @@ class ChatbotService {
       };
     }
 
-    // Short/simple queries like "ok", "cool", "nice", "hmm"
-    if (q.length < 10) {
+    // Simple acknowledgment keywords ("ok", "cool", "nice", "thanks", "sure", "got it")
+    if (this._matchesAny(q, ['ok', 'okay', 'cool', 'nice', 'sure', 'fine', 'kk', 'great', 'awesome', 'got it', 'yep', 'yeah', 'yes'])) {
       return {
-        reply: `Got it! Is there anything else I can help you with? I can help you find products, track orders, check offers, or connect you with our support team. 😊`,
+        reply: `Awesome! Let me know whenever you'd like to search for products, check active offers, or track an order. 😊`,
         type: 'INFO',
         actions: [
           { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
           { label: '🎟️ Offers & Coupons', action: 'OFFERS' }
+        ]
+      };
+    }
+
+    // Short/simple query fallback — default to welcome greeting
+    if (q.length < 10) {
+      return {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
         ]
       };
     }
@@ -241,9 +261,19 @@ class ChatbotService {
       return await this._handleCartBudgetQuery({ q, user, query });
     }
 
-    // 2.6 — Phase 10: AI Personalized Offers (must be before isPaymentQuery)
-    if (this.isOfferQuery(q)) {
-      return await this._handleOfferQuery({ q, user });
+    // 2.7 — Greetings (hi, hello, hlo, helo, etc.)
+    if (this.isGreetingQuery(q)) {
+      return {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant. How can I help you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      };
     }
 
     // 3. Product Search
@@ -408,6 +438,21 @@ class ChatbotService {
     // Phase 10: AI Personalized Offers (must be before isPaymentQuery)
     if (this.isOfferQuery(q)) {
       return { streamed: false, data: await this._handleOfferQuery({ q, user }) };
+    }
+
+    // Greetings (hi, hello, hlo, helo, etc.)
+    if (this.isGreetingQuery(q)) {
+      return { streamed: false, data: {
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant. How can I help you today?`,
+        type: 'GREETING',
+        actions: [
+          { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
+          { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
+          { label: '🔄 Return & Refund', action: 'RETURNS' },
+          { label: '🎟️ Offers & Coupons', action: 'OFFERS' },
+          { label: '👨‍💻 Human Support', action: 'ESCALATE' }
+        ]
+      }};
     }
 
     if (this.isProductSearchQuery(q)) {
