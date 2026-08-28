@@ -297,10 +297,6 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         status: targetStatus,
         isVisible: targetStatus === 'PUBLISHED',
         images: uploadedUrls,
-        // Extended fields stored as meta
-        fabric: form.fabric,
-        pattern: form.pattern,
-        washCare: form.washCare,
         slug: form.slug,
         // Per-product shipping
         shippingFee: parseFloat(form.shippingFee) || 0,

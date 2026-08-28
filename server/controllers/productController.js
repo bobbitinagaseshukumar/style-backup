@@ -424,13 +424,24 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 });
 
 const sanitizeUpdateData = (data, extraKeysToRemove = []) => {
-  const clean = { ...data };
-  const keysToRemove = [
-    'id', 'createdAt', 'updatedAt', '_count', 'category', 'subCategory',
-    'brand', 'images', 'reviews', 'items', 'user', 'products', 'subcategories',
-    ...extraKeysToRemove
-  ];
-  keysToRemove.forEach(k => delete clean[k]);
+  // ALLOWLIST: Only pass fields that actually exist on the Prisma Product model
+  const ALLOWED_PRODUCT_FIELDS = new Set([
+    'name', 'slug', 'sku', 'barcode', 'price', 'discountPercent', 'discountPrice',
+    'gstPercent', 'stock', 'categoryId', 'subCategoryId', 'brandId',
+    'sizes', 'colors', 'material', 'occasion', 'gender', 'weight', 'shippingFee', 'freeShipping',
+    'shortDesc', 'description', 'specifications', 'careInstruction', 'tags',
+    'featured', 'trending', 'todaysDeal', 'flashSale', 'newArrival', 'bestSeller',
+    'isRecommended', 'isPremium', 'isFestival', 'showOnHomepage',
+    'status', 'displayOrder', 'isVisible',
+    'videoUrl', 'threeSixtyImages', 'colorGalleries', 'colorSizeInventory',
+  ]);
+
+  const clean = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (ALLOWED_PRODUCT_FIELDS.has(key) && !extraKeysToRemove.includes(key)) {
+      clean[key] = value;
+    }
+  }
   return clean;
 };
 
@@ -475,9 +486,10 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
   if (updateData.colors && typeof updateData.colors !== 'string') updateData.colors = JSON.stringify(updateData.colors);
   if (updateData.colorGalleries && typeof updateData.colorGalleries !== 'string') updateData.colorGalleries = JSON.stringify(updateData.colorGalleries);
   if (updateData.colorSizeInventory && typeof updateData.colorSizeInventory !== 'string') updateData.colorSizeInventory = JSON.stringify(updateData.colorSizeInventory);
-  // Check if product was out of stock prior to update
-  const existingProduct = await prisma.product.findUnique({ where: { id }, select: { stock: true } });
+  // Check if product was out of stock prior to update and what the status was before
+  const existingProduct = await prisma.product.findUnique({ where: { id }, select: { stock: true, status: true } });
   const wasOutOfStock = existingProduct && (existingProduct.stock <= 0 || !existingProduct.stock);
+  const previousStatus = existingProduct?.status;
 
   const product = await prisma.product.update({
     where: { id },
@@ -528,8 +540,9 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Broadcast notification to all customers if status changed to PUBLISHED
-  if (updatedFullProduct && (updatedFullProduct.status === 'PUBLISHED' || updatedFullProduct.isVisible)) {
+  // Only send new product email if status CHANGED to PUBLISHED from a non-published status
+  // Do NOT spam customers on every product edit
+  if (updatedFullProduct && updatedFullProduct.status === 'PUBLISHED' && previousStatus && previousStatus !== 'PUBLISHED') {
     setImmediate(() => {
       emailService.sendNewProductNotificationToCustomers(updatedFullProduct);
     });
