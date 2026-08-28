@@ -120,7 +120,7 @@ const Categories = () => {
             {activeCategoryObj ? activeCategoryObj.name : 'Explore All Collections'}
           </h1>
           <p className="text-sm text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            {activeCategoryObj?.shortDesc || activeCategoryObj?.description || 'Discover handcrafted sarees, kundan jewellery, kurtis, and designer wear'}
+            {activeCategoryObj?.shortDesc || activeCategoryObj?.description || 'Discover handcrafted jewellery, kids wear, men\'s wear, and women\'s wear'}
           </p>
         </div>
       </div>

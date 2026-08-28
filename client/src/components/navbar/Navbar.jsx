@@ -430,7 +430,7 @@ const Navbar = () => {
                     {isAuthenticated && isUserMenuOpen && (
                       <div
                         ref={userDropdownRef}
-                        className="absolute right-0 mt-2 w-60 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-50 text-xs"
+                        className="absolute right-0 top-full mt-2 w-64 bg-[#111116] border border-white/10 rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden z-[100] text-xs"
                         style={{ animation: 'fadeInDropdown 0.12s ease-out' }}
                       >
                         <div className="px-4 py-3 border-b border-white/10 bg-white/5">
