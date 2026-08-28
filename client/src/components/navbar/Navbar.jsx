@@ -154,6 +154,27 @@ const Navbar = () => {
     };
   }, [isUserMenuOpen]);
 
+  /* ── Close MegaMenu on outside click/tap anywhere ──────────── */
+  const navbarRef = useRef(null);
+
+  useEffect(() => {
+    if (!activeMegaMenu) return;
+
+    const closeOutsideMega = (e) => {
+      if (navbarRef.current && !navbarRef.current.contains(e.target)) {
+        setActiveMegaMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', closeOutsideMega);
+    document.addEventListener('touchstart', closeOutsideMega, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', closeOutsideMega);
+      document.removeEventListener('touchstart', closeOutsideMega);
+    };
+  }, [activeMegaMenu]);
+
   /* ── Mega Menu hover handlers ──────────────────────────────── */
   const openMega = (name) => {
     clearTimeout(megaMenuTimeout.current);
@@ -177,7 +198,7 @@ const Navbar = () => {
   return (
     <>
       {/* ── STICKY HEADER WRAPPER (Guarantees zero overlap on mobile/desktop) ── */}
-      <header className="sticky top-0 z-50 w-full transition-all duration-300">
+      <header ref={navbarRef} className="sticky top-0 z-50 w-full transition-all duration-300">
         {/* Top Announcement Banner (Only rendered if admin published an active announcement) */}
         <AnimatePresence>
           {announcementEnabled && (
@@ -261,6 +282,7 @@ const Navbar = () => {
                     >
                       <Link
                         to={item.link}
+                        onClick={() => setActiveMegaMenu(null)}
                         className={`
                           relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 group
                           ${activeMegaMenu === item.megaKey || isActive
@@ -530,6 +552,7 @@ const Navbar = () => {
             category={activeMegaMenu}
             onMouseEnter={keepMega}
             onMouseLeave={closeMega}
+            onClose={() => setActiveMegaMenu(null)}
           />
         )}
       </AnimatePresence>

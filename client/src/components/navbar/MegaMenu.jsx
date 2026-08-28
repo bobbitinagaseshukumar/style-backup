@@ -151,7 +151,17 @@ const formatCategoryTitle = (category, parentCat) => {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 };
 
-const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
+const getCategorySlug = (catKey, parentCatObj) => {
+  if (parentCatObj?.slug) return parentCatObj.slug;
+  const k = String(catKey || '').toLowerCase().trim();
+  if (k.includes('men') && !k.includes('women')) return 'mens-wear';
+  if (k.includes('women')) return 'womens-wear';
+  if (k.includes('kid')) return 'kids-wear';
+  if (k.includes('jewel')) return 'jewellery';
+  return k.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+};
+
+const MegaMenu = ({ category, onMouseEnter, onMouseLeave, onClose }) => {
   const [subcategories, setSubcategories] = useState(() => {
     if (megaMenuCache) {
       const p = findMatchingCategory(megaMenuCache.allCats, category);
@@ -190,7 +200,11 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
   }, [category]);
 
   const displayTitle = formatCategoryTitle(category, parentCat);
-  const targetSlug = parentCat?.slug || String(category || '').toLowerCase();
+  const targetSlug = getCategorySlug(category, parentCat);
+
+  const handleLinkClick = () => {
+    if (onClose) onClose();
+  };
 
   const containerVariants = {
     hidden: { opacity: 0, y: -6 },
@@ -210,7 +224,7 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
       exit="exit"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed left-0 right-0 z-50 bg-[#0D0D12]/98 backdrop-blur-2xl border-b border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)]"
+      className="fixed left-0 right-0 z-50 bg-[#0D0D12]/98 backdrop-blur-2xl border-b border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] select-none"
       style={{ top: '64px' }}
     >
       <div className="max-w-7xl mx-auto px-6 py-6">
@@ -235,6 +249,7 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
                   <p className="text-xs text-white/50 mb-3">Explore the full range of designer products in this collection.</p>
                   <Link
                     to={`/categories/${targetSlug}`}
+                    onClick={handleLinkClick}
                     className="inline-flex items-center gap-2 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
                   >
                     Browse All {displayTitle} Products <FiArrowRight size={12} />
@@ -246,6 +261,7 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
                     <li key={sub.id || sub.slug}>
                       <Link
                         to={`/categories/${targetSlug}?sub=${sub.slug}`}
+                        onClick={handleLinkClick}
                         className="group flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/5 transition-all duration-150"
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400/40 group-hover:bg-amber-400 group-hover:scale-125 transition-all" />
@@ -266,6 +282,7 @@ const MegaMenu = ({ category, onMouseEnter, onMouseLeave }) => {
               </div>
               <Link
                 to={`/categories/${targetSlug}`}
+                onClick={handleLinkClick}
                 className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black font-black text-xs transition-all shadow-md cursor-pointer"
               >
                 <span>View All {displayTitle}</span>
