@@ -89,6 +89,7 @@ class ProductIntentService {
       'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
       'very', 'really', 'good', 'best', 'nice', 'great', 'like', 'just',
       'something', 'anything', 'one', 'ones', 'upto', 'up', 'max', 'maximum',
+      'color', 'colour', 'colors', 'colours', 'type', 'kind', 'item', 'items', 'wear', 'clothing', 'style', 'styled',
       ...colorList
     ]);
 
@@ -185,10 +186,13 @@ class ProductIntentService {
     // Category filtering
     if (intent.category) {
       const catVal = intent.category.toLowerCase();
+      const catStem = catVal.replace(/s$/, '');
       andConditions.push({
         OR: [
           { category: { slug: { contains: catVal, mode: 'insensitive' } } },
-          { category: { name: { contains: catVal, mode: 'insensitive' } } }
+          { category: { slug: { contains: catStem, mode: 'insensitive' } } },
+          { category: { name: { contains: catVal, mode: 'insensitive' } } },
+          { category: { name: { contains: catStem, mode: 'insensitive' } } }
         ]
       });
     }
@@ -196,10 +200,13 @@ class ProductIntentService {
     // Subcategory filtering
     if (intent.subcategory) {
       const subVal = intent.subcategory.toLowerCase();
+      const subStem = subVal.replace(/s$/, '');
       andConditions.push({
         OR: [
           { subCategory: { slug: { contains: subVal, mode: 'insensitive' } } },
-          { subCategory: { name: { contains: subVal, mode: 'insensitive' } } }
+          { subCategory: { slug: { contains: subStem, mode: 'insensitive' } } },
+          { subCategory: { name: { contains: subVal, mode: 'insensitive' } } },
+          { subCategory: { name: { contains: subStem, mode: 'insensitive' } } }
         ]
       });
     }
@@ -233,13 +240,15 @@ class ProductIntentService {
     if (intent.keywords.length > 0) {
       const keywordOrs = [];
       for (const term of intent.keywords) {
+        const stem = term.toLowerCase().replace(/s$/, '');
         keywordOrs.push(
           { name: { contains: term, mode: 'insensitive' } },
+          { name: { contains: stem, mode: 'insensitive' } },
           { description: { contains: term, mode: 'insensitive' } },
           { shortDesc: { contains: term, mode: 'insensitive' } },
           { tags: { contains: term, mode: 'insensitive' } },
-          { category: { name: { contains: term, mode: 'insensitive' } } },
-          { subCategory: { name: { contains: term, mode: 'insensitive' } } }
+          { category: { name: { contains: stem, mode: 'insensitive' } } },
+          { subCategory: { name: { contains: stem, mode: 'insensitive' } } }
         );
       }
       andConditions.push({ OR: keywordOrs });

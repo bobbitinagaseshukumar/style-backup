@@ -11,8 +11,8 @@ class GeminiService {
   constructor() {
     this.apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     this.client = null;
-    this.model = 'gemini-2.5-flash';
-    this.fallbackModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    this.model = 'gemini-3.6-flash';
+    this.fallbackModels = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
     if (this.apiKey) {
       try {
