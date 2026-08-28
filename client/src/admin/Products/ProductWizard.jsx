@@ -207,6 +207,14 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
 
   const mainRef = useRef(null);
 
+  /* ── Manage body scroll lock during active wizard ────────────── */
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   /* ── Auto scroll to top on step change ───────────────────────── */
   useEffect(() => {
     if (mainRef.current) {
@@ -317,6 +325,8 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         window.dispatchEvent(new Event('kvlr:content-updated'));
       } catch (e) {}
 
+      // Unlock body overflow immediately
+      document.body.style.overflow = '';
       // Close wizard FIRST to remove the blur overlay immediately
       onClose?.();
       // Then refresh the product list (after modal is closed)
@@ -339,7 +349,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex"
+      className="fixed inset-0 z-[60] flex pointer-events-none"
       style={{ fontFamily: "'Inter', sans-serif" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -347,7 +357,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
       transition={{ duration: 0.2 }}
     >
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm pointer-events-auto" onClick={() => { document.body.style.overflow = ''; onClose?.(); }} />
 
       {/* Wizard Panel */}
       <motion.div
@@ -355,7 +365,7 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="relative w-full max-w-full bg-white h-full flex flex-col shadow-2xl overflow-hidden"
+        className="relative w-full max-w-full bg-white h-full flex flex-col shadow-2xl overflow-hidden pointer-events-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* ── Header ─────────────────────────────────────────── */}

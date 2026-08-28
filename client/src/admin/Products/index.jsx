@@ -644,9 +644,9 @@ const AdminProducts = () => {
       {/* ═══════ PRODUCT PREVIEW MODAL ═════════════════════════ */}
       <AnimatePresence>
         {previewProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 pointer-events-auto" onClick={() => setPreviewProduct(null)}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
+              className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] shadow-2xl border border-gray-100 overflow-hidden flex flex-col pointer-events-auto" onClick={e => e.stopPropagation()}>
 
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 shrink-0">
@@ -789,9 +789,9 @@ const AdminProducts = () => {
       {/* ═══════ DELETE CONFIRMATION MODAL ═════════════════════ */}
       <AnimatePresence>
         {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 pointer-events-auto" onClick={() => setDeleteTarget(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100">
+              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 pointer-events-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
                   <FiAlertTriangle className="text-red-600 w-5 h-5" />
@@ -827,9 +827,9 @@ const AdminProducts = () => {
       {/* ═══════ RESTOCK MODAL ═════════════════════════════════ */}
       <AnimatePresence>
         {restockTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 pointer-events-auto" onClick={() => { setRestockTarget(null); setRestockQty(''); }}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100">
+              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 pointer-events-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
                   <FiPackage className="text-emerald-600 w-5 h-5" />
@@ -857,7 +857,7 @@ const AdminProducts = () => {
               <div className="flex flex-col gap-2">
                 <button onClick={handleRestock} disabled={restocking || !restockQty}
                   className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition shadow-sm cursor-pointer disabled:opacity-50">
-                  {restocking ? 'Restocking...' : `📦 Restock & Notify Subscribers`}
+                  {restocking ? 'Restocking...' : `📦 Restock & Subscribe`}
                 </button>
                 <button onClick={() => { setRestockTarget(null); setRestockQty(''); }} disabled={restocking}
                   className="w-full py-2 rounded-xl text-gray-500 text-xs font-semibold hover:bg-gray-100 transition cursor-pointer">

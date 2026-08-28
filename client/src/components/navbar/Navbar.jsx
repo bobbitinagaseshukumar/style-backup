@@ -166,12 +166,23 @@ const Navbar = () => {
       }
     };
 
+    // Auto-close on scroll so menu doesn't float over page content
+    const handleScroll = () => setActiveMegaMenu(null);
+
+    // Safety timeout: auto-close mega menu after 4 seconds of idle so it never blocks page clicks
+    const safetyTimer = setTimeout(() => {
+      setActiveMegaMenu(null);
+    }, 4000);
+
     document.addEventListener('mousedown', closeOutsideMega);
     document.addEventListener('touchstart', closeOutsideMega, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
+      clearTimeout(safetyTimer);
       document.removeEventListener('mousedown', closeOutsideMega);
       document.removeEventListener('touchstart', closeOutsideMega);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [activeMegaMenu]);
 
