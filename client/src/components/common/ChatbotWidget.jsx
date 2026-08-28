@@ -252,6 +252,9 @@ const ChatbotWidget = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    // Auto-abort after 25 seconds to prevent infinite spinner
+    const streamTimeout = setTimeout(() => controller.abort(), 25000);
+
     try {
       // Build the full URL using the same base as the api instance
       const baseURL = api.defaults.baseURL || '/api/v1';
@@ -377,10 +380,16 @@ const ChatbotWidget = () => {
         ].slice(-10));
       }
 
+      clearTimeout(streamTimeout);
       return true;
     } catch (err) {
+      clearTimeout(streamTimeout);
       if (err.name === 'AbortError') {
-        return true; // User cancelled — not an error
+        // Timeout or user cancelled — show fallback message
+        setMessages((prev) => prev.map((m) =>
+          m.isStreaming ? { ...m, text: m.text || 'Response took too long. Please try again.', isStreaming: false } : m
+        ));
+        return true;
       }
       console.warn('[ChatbotWidget] Streaming failed, falling back:', err.message);
       // Remove the placeholder streaming message

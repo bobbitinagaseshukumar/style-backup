@@ -751,14 +751,9 @@ class ChatbotService {
     // 3. Perform Real Database Query via ProductIntentService (non-outfit requests)
     const products = await productIntentService.searchProductsByIntent(extractedIntent, q);
 
-    // 4. Generate Natural Conversational Reply with Gemini or Fallback
+    // 4. Return products with instant response text (skip slow Gemini summarizeProducts call)
     if (products.length > 0) {
-      if (geminiService.isConfigured()) {
-        replyText = await geminiService.summarizeProducts(q, products);
-      }
-      if (!replyText) {
-        replyText = `✨ Here are matching luxury items from our collection:`;
-      }
+      replyText = `✨ Here are matching items from our collection:`;
     } else {
       replyText = `I couldn't find an exact match in our current collection. Try a different keyword, color, or category!`;
     }

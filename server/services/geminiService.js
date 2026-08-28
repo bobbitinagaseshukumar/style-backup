@@ -5,14 +5,14 @@ const env = require('../config/env');
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 20; // max 20 AI requests per minute per session
-const REQUEST_TIMEOUT_MS = 20000; // 20 second timeout for Gemini calls
+const REQUEST_TIMEOUT_MS = 10000; // 10 second timeout for Gemini calls
 
 class GeminiService {
   constructor() {
     this.apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     this.client = null;
-    this.model = 'gemini-3.6-flash';
-    this.fallbackModels = ['gemini-3.6-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+    this.model = 'gemini-2.5-flash';
+    this.fallbackModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
     if (this.apiKey) {
       try {
@@ -68,20 +68,24 @@ class GeminiService {
   }
 
   /**
-   * Internal generator with automatic model fallback
+   * Internal generator with automatic model fallback and enforced timeout
    */
   async generateWithFallback(contents, config = {}) {
     const modelsToTry = [this.model, ...this.fallbackModels.filter(m => m !== this.model)];
     for (const modelName of modelsToTry) {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        const response = await this.client.models.generateContent({
+        // Use Promise.race for guaranteed timeout enforcement
+        const apiCall = this.client.models.generateContent({
           model: modelName,
           contents,
           config,
         });
-        clearTimeout(timeout);
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Gemini timeout after ${REQUEST_TIMEOUT_MS}ms`)), REQUEST_TIMEOUT_MS)
+        );
+
+        const response = await Promise.race([apiCall, timeoutPromise]);
         const text = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         if (text) {
           return { text, modelUsed: modelName };
