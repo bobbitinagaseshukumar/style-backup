@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiFilter, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiLayers, FiCheck } from 'react-icons/fi';
 import api from '../../config/api';
@@ -13,6 +13,8 @@ let _subcategoriesCache = {};
 
 const Categories = () => {
   const { slug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [categories, setCategories] = useState(_categoriesCache || []);
   const [subcategories, setSubcategories] = useState([]);
@@ -20,13 +22,52 @@ const Categories = () => {
   const [loading, setLoading] = useState(!_categoriesCache);
 
   // Filter & Sort state
+  const queryParams = new URLSearchParams(location.search);
+  const initialSub = queryParams.get('sub') || '';
+
   const [selectedCategory, setSelectedCategory] = useState(slug || '');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialSub);
   const [sortOption, setSortOption] = useState('newest');
   const [maxPrice, setMaxPrice] = useState(20000);
   const [filterFeatured, setFilterFeatured] = useState(false);
   const [filterTrending, setFilterTrending] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Synchronize category & subcategory state with URL params whenever route slug or search query changes!
+  useEffect(() => {
+    const newCat = slug || '';
+    const q = new URLSearchParams(location.search);
+    const newSub = q.get('sub') || '';
+
+    setSelectedCategory(newCat);
+    setSelectedSubcategory(newSub);
+
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [slug, location.search]);
+
+  // Helper to handle category selection via sidebar or drawer radio buttons
+  const handleCategorySelect = (catSlug) => {
+    setSelectedCategory(catSlug);
+    setSelectedSubcategory('');
+    if (catSlug) {
+      navigate(`/categories/${catSlug}`);
+    } else {
+      navigate('/categories');
+    }
+  };
+
+  // Helper to handle subcategory selection
+  const handleSubcategorySelect = (subVal) => {
+    setSelectedSubcategory(subVal);
+    const catSlug = selectedCategory || slug || '';
+    if (catSlug) {
+      if (subVal) {
+        navigate(`/categories/${catSlug}?sub=${encodeURIComponent(subVal)}`);
+      } else {
+        navigate(`/categories/${catSlug}`);
+      }
+    }
+  };
 
   // Fetch Parent Categories
   useEffect(() => {
@@ -182,13 +223,13 @@ const Categories = () => {
               </button>
 
               {subcategories.map(sub => {
-                const isSelected = selectedSubcategory === sub.id;
+                const isSelected = selectedSubcategory === sub.id || selectedSubcategory === sub.slug;
                 const prodCount = sub._count?.products || 0;
 
                 return (
                   <button
                     key={sub.id}
-                    onClick={() => setSelectedSubcategory(isSelected ? '' : sub.id)}
+                    onClick={() => handleSubcategorySelect(isSelected ? '' : (sub.slug || sub.id))}
                     className={`p-2 pr-4 rounded-2xl border transition-all text-xs shrink-0 cursor-pointer flex items-center gap-3 ${
                       isSelected ? 'bg-amber-500 border-amber-500 text-black shadow-md font-black' : 'bg-white border-gray-200 text-gray-800 hover:border-amber-400'
                     }`}
@@ -249,7 +290,7 @@ const Categories = () => {
                     type="radio"
                     name="category"
                     checked={!selectedCategory}
-                    onChange={() => { setSelectedCategory(''); setSelectedSubcategory(''); }}
+                    onChange={() => handleCategorySelect('')}
                     className="text-gold-500 focus:ring-gold-500"
                   />
                   All Categories
@@ -260,7 +301,7 @@ const Categories = () => {
                       type="radio"
                       name="category"
                       checked={selectedCategory === cat.slug || selectedCategory === cat.id}
-                      onChange={() => { setSelectedCategory(cat.slug); setSelectedSubcategory(''); }}
+                      onChange={() => handleCategorySelect(cat.slug || cat.id)}
                       className="text-gold-500 focus:ring-gold-500"
                     />
                     {cat.name}
@@ -279,24 +320,27 @@ const Categories = () => {
                       type="radio"
                       name="subcategory"
                       checked={!selectedSubcategory}
-                      onChange={() => setSelectedSubcategory('')}
+                      onChange={() => handleSubcategorySelect('')}
                       className="text-gold-500 focus:ring-gold-500"
                     />
                     All Subcategories
                   </label>
-                  {subcategories.map((sub) => (
-                    <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="subcategory"
-                        checked={selectedSubcategory === sub.id}
-                        onChange={() => setSelectedSubcategory(sub.id)}
-                        className="text-gold-500 focus:ring-gold-500"
-                      />
-                      <span>{sub.name}</span>
-                      <span className="text-[10px] text-gray-400">({sub._count?.products || 0})</span>
-                    </label>
-                  ))}
+                  {subcategories.map((sub) => {
+                    const isSubSelected = selectedSubcategory === sub.id || selectedSubcategory === sub.slug;
+                    return (
+                      <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="subcategory"
+                          checked={isSubSelected}
+                          onChange={() => handleSubcategorySelect(sub.slug || sub.id)}
+                          className="text-gold-500 focus:ring-gold-500"
+                        />
+                        <span>{sub.name}</span>
+                        <span className="text-[10px] text-gray-400">({sub._count?.products || 0})</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -360,12 +404,12 @@ const Categories = () => {
                     <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Categories</h3>
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                        <input type="radio" checked={!selectedCategory} onChange={() => { setSelectedCategory(''); setSelectedSubcategory(''); }} className="text-gold-500" />
+                        <input type="radio" checked={!selectedCategory} onChange={() => handleCategorySelect('')} className="text-gold-500" />
                         All Categories
                       </label>
                       {categories.map((cat) => (
                         <label key={cat.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                          <input type="radio" checked={selectedCategory === cat.slug || selectedCategory === cat.id} onChange={() => { setSelectedCategory(cat.slug); setSelectedSubcategory(''); }} className="text-gold-500" />
+                          <input type="radio" checked={selectedCategory === cat.slug || selectedCategory === cat.id} onChange={() => handleCategorySelect(cat.slug || cat.id)} className="text-gold-500" />
                           {cat.name}
                         </label>
                       ))}
@@ -376,12 +420,15 @@ const Categories = () => {
                     <div className="pt-4 border-t border-gray-200">
                       <h3 className="font-serif font-bold text-sm text-charcoal-900 mb-3 uppercase tracking-wider">Subcategories</h3>
                       <div className="space-y-2">
-                        {subcategories.map((sub) => (
-                          <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                            <input type="radio" checked={selectedSubcategory === sub.id} onChange={() => setSelectedSubcategory(sub.id)} className="text-gold-500" />
-                            {sub.name}
-                          </label>
-                        ))}
+                        {subcategories.map((sub) => {
+                          const isSubSelected = selectedSubcategory === sub.id || selectedSubcategory === sub.slug;
+                          return (
+                            <label key={sub.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                              <input type="radio" checked={isSubSelected} onChange={() => handleSubcategorySelect(sub.slug || sub.id)} className="text-gold-500" />
+                              {sub.name}
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
