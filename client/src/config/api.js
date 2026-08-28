@@ -78,23 +78,24 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // 401 Token handling — BE VERY CONSERVATIVE
-    // NEVER clear localStorage tokens on transient errors (cold start, network blip, timeout)
-    // Only clear if server EXPLICITLY says the token itself is permanently invalid
+    // 401 Token handling — Clear invalid or dead tokens to prevent perpetual 401 loops
     if (error.response && error.response.status === 401) {
       const message = (error.response.data?.message || '').toLowerCase();
-      // Only these exact server messages mean the token is permanently dead:
       const isTokenPermanentlyDead = message.includes('session has expired') ||
                                      message.includes('no token') ||
                                      message.includes('please log in') ||
+                                     message.includes('token failed') ||
+                                     message.includes('not authorized') ||
+                                     message.includes('jwt') ||
+                                     message.includes('invalid') ||
                                      message.includes('user belonging to this token no longer exists');
-      // Do NOT clear on: 'not authorized', 'token failed' (could be cold start / transient)
       if (isTokenPermanentlyDead) {
         const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
         if (isAdminPath) {
           localStorage.removeItem('adminToken');
         } else {
           localStorage.removeItem('token');
+          localStorage.removeItem('adminToken');
         }
       }
     }
