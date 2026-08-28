@@ -52,6 +52,38 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 });
 
 const recommendationService = require('../services/recommendationService');
+const stylistService = require('../services/stylistService');
+const visualSearchService = require('../services/visualSearchService');
+
+// ==================== OCCASION + BUDGET PERSONAL STYLIST ====================
+exports.getPersonalStylist = asyncHandler(async (req, res) => {
+  const { occasion, maxBudget, minBudget, category, color, style, isSingleProduct } = req.body;
+  const result = await stylistService.buildOutfitRecommendations({
+    occasion,
+    maxBudget,
+    minBudget,
+    category,
+    color,
+    style,
+    isSingleProduct
+  });
+  res.status(200).json({ success: true, data: result });
+});
+
+// ==================== VISUAL PRODUCT DISCOVERY ====================
+exports.searchByVisualImage = asyncHandler(async (req, res, next) => {
+  const { imageBase64, mimeType, textPrompt, maxBudget } = req.body;
+  if (!imageBase64) {
+    return next(new ApiError(400, 'Image file is required for visual search'));
+  }
+  const result = await visualSearchService.searchByImage({
+    imageBase64,
+    mimeType: mimeType || 'image/jpeg',
+    textPrompt: textPrompt || '',
+    maxBudget: maxBudget ? parseFloat(maxBudget) : null
+  });
+  res.status(200).json({ success: true, data: result });
+});
 
 // ==================== PERSONALIZED RECOMMENDATION ENGINE ====================
 exports.getPersonalized = asyncHandler(async (req, res) => {

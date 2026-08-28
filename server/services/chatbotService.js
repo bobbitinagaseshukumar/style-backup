@@ -2,6 +2,8 @@ const prisma = require('../config/db');
 const ollamaService = require('./ollamaService');
 const geminiService = require('./geminiService');
 const productIntentService = require('./productIntentService');
+const stylistService = require('./stylistService');
+const visualSearchService = require('./visualSearchService');
 
 /**
  * Enterprise Intelligent AI Shopping Assistant Service
@@ -538,10 +540,40 @@ class ChatbotService {
       }
     }
 
-    // 2. Perform Real Database Query via ProductIntentService
+    // 2. Check if intent is outfit_recommendation or occasion+budget search
+    const isOutfitReq = extractedIntent?.intent === 'outfit_recommendation' ||
+                        q.includes('outfit') || q.includes('look') || q.includes('suggest an outfit');
+
+    if (isOutfitReq && (extractedIntent?.maxPrice || q.match(/under|below|\d{3,}/))) {
+      const budget = extractedIntent?.maxPrice || parseFloat((q.match(/(\d{3,})/)||[0, 3000])[1]);
+      const occasion = extractedIntent?.occasion || (q.includes('wedding') ? 'wedding' : q.includes('party') ? 'party' : 'festive');
+      const color = extractedIntent?.color || null;
+      const category = extractedIntent?.category || null;
+
+      const outfitData = await stylistService.buildOutfitRecommendations({
+        occasion,
+        maxBudget: budget,
+        category,
+        color
+      });
+
+      if (outfitData.type === 'OUTFIT_LOOKS' && outfitData.looks?.length > 0) {
+        return {
+          reply: `✨ Based on your ₹${budget} budget for a ${occasion}, here are complete outfit combinations from our collection:`,
+          type: 'OUTFIT_LOOKS',
+          occasion,
+          maxBudget: budget,
+          looks: outfitData.looks,
+          aiPowered: Boolean(extractedIntent),
+          actions: [{ label: 'Browse Full Catalog', action: 'BROWSE_ALL', link: '/categories' }]
+        };
+      }
+    }
+
+    // 3. Perform Real Database Query via ProductIntentService
     const products = await productIntentService.searchProductsByIntent(extractedIntent, q);
 
-    // 3. Generate Natural Conversational Reply with Gemini or Fallback
+    // 4. Generate Natural Conversational Reply with Gemini or Fallback
     if (products.length > 0) {
       if (geminiService.isConfigured()) {
         replyText = await geminiService.summarizeProducts(q, products);

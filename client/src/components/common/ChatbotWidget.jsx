@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiMessageSquare, FiX, FiSend, FiShoppingBag, FiTruck,
   FiRefreshCw, FiZap, FiTrash2, FiDownload, FiUser, FiCpu,
-  FiCheckCircle, FiHeart, FiTag, FiStar
+  FiCheckCircle, FiHeart, FiTag, FiStar, FiCamera
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -15,14 +15,14 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 
 const QUICK_ACTIONS = [
+  { label: '📷 Find Similar Products', action: 'VISUAL_SEARCH' },
+  { label: '👑 Wedding outfit under ₹3000', query: 'I have ₹3000 and I am going to a wedding. Suggest an outfit.' },
   { label: '✨ Shirts under ₹1500', query: 'Find shirts under ₹1500' },
-  { label: '💍 Wedding outfit', query: 'Suggest a wedding outfit' },
   { label: '👕 Casual wear', query: 'Show casual wear' },
   { label: '🎁 Under ₹2000', query: 'Find something under ₹2000' },
   { label: '🔥 What\'s trending?', query: 'Show trending luxury products' },
   { label: '🚚 Track Order', query: 'Where is my order?' },
   { label: '🔄 Returns', query: 'What is your return policy?' },
-  { label: '👨‍💻 Support', query: 'I want to speak with human support' },
 ];
 
 /**
@@ -385,6 +385,9 @@ const ChatbotWidget = () => {
                         : 'bg-white/10 border border-white/10 text-white rounded-bl-none'
                     }`}
                   >
+                    {m.imageUrl && (
+                      <img src={m.imageUrl} alt="Uploaded" className="w-32 h-32 object-cover rounded-xl mb-2 border border-black/30" />
+                    )}
                     <p className="whitespace-pre-line">{m.text}</p>
 
                     {/* Streaming cursor */}
@@ -392,6 +395,40 @@ const ChatbotWidget = () => {
                       <span className="inline-block w-1.5 h-3.5 bg-gold-400 ml-0.5 animate-pulse rounded-sm" />
                     )}
                   </div>
+
+                  {/* Verified PostgreSQL Outfit Looks */}
+                  {(m.data?.type === 'OUTFIT_LOOKS' || m.type === 'OUTFIT_LOOKS' || m.data?.looks) && (
+                    <div className="mt-2 space-y-2.5 w-full max-w-[88%]">
+                      {(m.data?.looks || m.looks || []).map((look, idx) => (
+                        <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-gold-500/30 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[11px] font-bold text-amber-300">{look.title}</h4>
+                            <span className="text-[10px] text-emerald-400 font-bold">₹{look.subtotal}</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {look.items?.map((item) => (
+                              <div key={item.id} className="flex items-center justify-between text-[10px] text-gray-300 bg-black/40 p-1.5 rounded-lg">
+                                <span className="truncate max-w-[160px] font-semibold">{item.name}</span>
+                                <span className="font-black text-gold-400">₹{item.discountPrice || item.price}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                            <span className="text-[9px] text-gray-400">Within budget by ₹{look.remainingBudget}</span>
+                            <button
+                              onClick={() => {
+                                look.items?.forEach(item => dispatch(addToCart({ product: item, quantity: 1 })));
+                                toast.success(`Added ${look.title} items to cart!`);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-black font-bold text-[9px] hover:from-gold-400 transition cursor-pointer"
+                            >
+                              + Add Outfit to Cart
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Verified PostgreSQL Product Cards */}
                   {((m.data?.products && m.data.products.length > 0) || (m.products && m.products.length > 0)) && (
@@ -476,7 +513,13 @@ const ChatbotWidget = () => {
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
-                  onClick={() => handleSendMessage(action.query)}
+                  onClick={() => {
+                    if (action.action === 'VISUAL_SEARCH') {
+                      fileInputRef.current?.click();
+                    } else {
+                      handleSendMessage(action.query);
+                    }
+                  }}
                   disabled={isStreaming}
                   className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-gold-500/20 border border-white/10 text-gray-300 hover:text-gold-400 text-[10px] font-semibold whitespace-nowrap transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -484,6 +527,18 @@ const ChatbotWidget = () => {
                 </button>
               ))}
             </div>
+
+            {/* HIDDEN FILE INPUT FOR VISUAL SEARCH */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleVisualSearchUpload(file);
+              }}
+            />
 
             {/* INPUT FORM */}
             <form
@@ -493,9 +548,18 @@ const ChatbotWidget = () => {
               }}
               className="p-3 bg-black border-t border-white/10 flex items-center gap-2 shrink-0"
             >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload Image for Visual Search"
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-gold-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                <FiCamera className="w-4 h-4" />
+              </button>
+
               <input
                 type="text"
-                placeholder={isStreaming ? 'AI is responding...' : 'Ask about products, orders...'}
+                placeholder={isStreaming ? 'AI is responding...' : 'Ask about products, outfits, budgets...'}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={isStreaming}
