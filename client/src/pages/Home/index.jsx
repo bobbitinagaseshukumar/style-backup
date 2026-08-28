@@ -12,6 +12,7 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 import ProductCard from '../../components/common/ProductCard';
+import RecommendedForYou from '../../components/home/RecommendedForYou';
 import RecentlyViewedSection from '../../components/home/RecentlyViewedSection';
 import FlashSaleSection from '../../components/home/FlashSaleSection';
 import CollectionShowcase from '../../components/home/CollectionShowcase';
@@ -640,6 +641,9 @@ const Home = () => {
           </section>
         );
       })}
+
+      {/* 15. AI PERSONALIZED RECOMMENDATIONS */}
+      <RecommendedForYou />
 
       {/* 16. BRAND SHOWCASE */}
       <BrandShowcase />

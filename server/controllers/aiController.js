@@ -51,50 +51,30 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
   });
 });
 
-// ==================== RECOMMENDATION ENGINE ====================
+const recommendationService = require('../services/recommendationService');
+
+// ==================== PERSONALIZED RECOMMENDATION ENGINE ====================
+exports.getPersonalized = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || null;
+  const limit = parseInt(req.query.limit || '8', 10);
+  const result = await recommendationService.getPersonalizedRecommendations({ userId, limit });
+  res.status(200).json({ success: true, data: result });
+});
+
+// ==================== CART CROSS-SELL RECOMMENDATIONS ====================
+exports.getCartRecommendations = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || null;
+  const limit = parseInt(req.query.limit || '4', 10);
+  const result = await recommendationService.getCartRecommendations({ userId, limit });
+  res.status(200).json({ success: true, data: result });
+});
+
+// ==================== PRODUCT PAGE RECOMMENDATIONS ====================
 exports.getRecommendations = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
-
-  const currentProduct = await prisma.product.findUnique({
-    where: { id: productId },
-    include: { category: true },
-  });
-
-  if (!currentProduct) {
-    return next(new ApiError(404, 'Product not found'));
-  }
-
-  // 1. Frequently Bought Together (Same subcategory or related category items)
-  const frequentlyBought = await prisma.product.findMany({
-    where: {
-      isVisible: true,
-      id: { not: productId },
-      categoryId: currentProduct.categoryId,
-    },
-    include: { images: true },
-    take: 2,
-  });
-
-  // 2. Similar Products (Same category, sorted by rating/popularity)
-  const similarProducts = await prisma.product.findMany({
-    where: {
-      isVisible: true,
-      id: { not: productId },
-      categoryId: currentProduct.categoryId,
-    },
-    include: { images: true, category: true },
-    orderBy: { createdAt: 'desc' },
-    take: 6,
-  });
-
-  res.status(200).json({
-    success: true,
-    data: {
-      currentProduct: { id: currentProduct.id, name: currentProduct.name, price: currentProduct.discountPrice || currentProduct.price },
-      frequentlyBoughtTogether: frequentlyBought,
-      similarProducts,
-    },
-  });
+  const limit = parseInt(req.query.limit || '6', 10);
+  const result = await recommendationService.getProductPageRecommendations({ productId, limit });
+  res.status(200).json({ success: true, data: result });
 });
 
 // ==================== BACK IN STOCK SUBSCRIPTION ====================
