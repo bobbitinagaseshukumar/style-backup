@@ -751,11 +751,27 @@ class ChatbotService {
     // 3. Perform Real Database Query via ProductIntentService (non-outfit requests)
     const products = await productIntentService.searchProductsByIntent(extractedIntent, q);
 
-    // 4. Return products with instant response text (skip slow Gemini summarizeProducts call)
+    // 4. Smart reply based on what was found
     if (products.length > 0) {
-      replyText = `✨ Here are matching items from our collection:`;
+      // Check if any product actually matches budget
+      const budgetMatch = q.match(/(?:under|below|within)\s*(?:₹|rs\.?|inr)?\s*(\d+)/i);
+      const requestedBudget = budgetMatch ? parseFloat(budgetMatch[1]) : (extractedIntent?.maxPrice || null);
+
+      if (requestedBudget) {
+        const withinBudget = products.some(p => {
+          const effectivePrice = (p.discountPrice && p.discountPrice > 0) ? p.discountPrice : p.price;
+          return effectivePrice <= requestedBudget;
+        });
+        if (withinBudget) {
+          replyText = `✨ Here are items under ₹${requestedBudget} from our collection:`;
+        } else {
+          replyText = `We don't have exact matches under ₹${requestedBudget}, but here are our most affordable similar options:`;
+        }
+      } else {
+        replyText = `✨ Here are matching items from our collection:`;
+      }
     } else {
-      replyText = `I couldn't find an exact match in our current collection. Try a different keyword, color, or category!`;
+      replyText = `I couldn't find products matching your request. Here are some suggestions — try browsing our full catalog!`;
     }
 
     return {
