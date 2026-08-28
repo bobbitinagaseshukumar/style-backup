@@ -65,8 +65,8 @@ exports.uploadImage = asyncHandler(async (req, res, next) => {
     try {
       const sharp = require('sharp');
       optimizedBuffer = await sharp(req.file.buffer)
-        .resize(1600, 2000, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 85 })
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
         .toBuffer();
     } catch (sharpErr) {
       // sharp not available, use raw buffer

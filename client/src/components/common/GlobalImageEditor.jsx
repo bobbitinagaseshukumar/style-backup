@@ -20,7 +20,7 @@ const createImage = (url) =>
     image.src = url;
   });
 
-async function getCroppedImg(imageSrc, pixelCrop, rotation = 0, flip = { horizontal: false, vertical: false }, quality = 0.92) {
+async function getCroppedImg(imageSrc, pixelCrop, rotation = 0, flip = { horizontal: false, vertical: false }, quality = 0.82) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -40,17 +40,40 @@ async function getCroppedImg(imageSrc, pixelCrop, rotation = 0, flip = { horizon
 
   const data = ctx.getImageData(0, 0, safeArea, safeArea);
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  // Resize crop output canvas down to max 1200px for optimal performance and lightweight Base64 size (<120KB)
+  let targetWidth = Math.max(1, Math.round(pixelCrop.width));
+  let targetHeight = Math.max(1, Math.round(pixelCrop.height));
+  const MAX_DIM = 1200;
+  if (targetWidth > MAX_DIM || targetHeight > MAX_DIM) {
+    if (targetWidth > targetHeight) {
+      targetHeight = Math.round((targetHeight * MAX_DIM) / targetWidth);
+      targetWidth = MAX_DIM;
+    } else {
+      targetWidth = Math.round((targetWidth * MAX_DIM) / targetHeight);
+      targetHeight = MAX_DIM;
+    }
+  }
 
-  ctx.putImageData(
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = pixelCrop.width;
+  cropCanvas.height = pixelCrop.height;
+  const cropCtx = cropCanvas.getContext('2d');
+  cropCtx.putImageData(
     data,
     Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
     Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
   );
 
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = targetWidth;
+  outCanvas.height = targetHeight;
+  const outCtx = outCanvas.getContext('2d');
+  outCtx.imageSmoothingEnabled = true;
+  outCtx.imageSmoothingQuality = 'high';
+  outCtx.drawImage(cropCanvas, 0, 0, pixelCrop.width, pixelCrop.height, 0, 0, targetWidth, targetHeight);
+
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), 'image/webp', quality);
+    outCanvas.toBlob((blob) => resolve(blob), 'image/webp', quality);
   });
 }
 
