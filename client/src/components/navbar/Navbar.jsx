@@ -217,7 +217,7 @@ const Navbar = () => {
           `}
         >
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
+            <div className="flex items-center justify-between h-16 sm:h-18 transition-all duration-300">
 
               {/* Mobile Hamburger Menu Button */}
               <button
@@ -240,7 +240,7 @@ const Navbar = () => {
                 <motion.span
                   whileHover={{ scale: 1.03 }}
                   transition={{ duration: 0.2 }}
-                  className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-white flex items-center shrink-0"
+                  className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-white flex items-center shrink-0 leading-none"
                 >
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-bold">
                     {storeName}
@@ -249,13 +249,13 @@ const Navbar = () => {
               </Link>
 
               {/* Desktop Navigation Links */}
-              <div className="hidden lg:flex items-center gap-1.5">
+              <div className="hidden lg:flex items-center gap-1.5 self-center">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.link;
                   return (
                     <div
                       key={item.title}
-                      className="relative"
+                      className="relative flex items-center"
                       onMouseEnter={() => item.megaKey ? openMega(item.megaKey) : null}
                       onMouseLeave={() => item.megaKey ? closeMega() : null}
                     >
@@ -263,7 +263,6 @@ const Navbar = () => {
                         to={item.link}
                         className={`
                           relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 group
-                          hover:-translate-y-0.5
                           ${activeMegaMenu === item.megaKey || isActive
                             ? 'text-amber-400 font-bold'
                             : 'text-white/80 hover:text-white'}
@@ -294,7 +293,7 @@ const Navbar = () => {
               </div>
 
               {/* Right Action Icons & Auth */}
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 self-center">
 
                 {/* Search Button */}
                 {headerSettings?.searchVisible !== false && (
@@ -302,7 +301,7 @@ const Navbar = () => {
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.92 }}
                     onClick={() => openDrawer('search')}
-                    className="p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0"
+                    className="p-2 sm:p-2 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0 flex items-center justify-center h-9 w-9"
                     aria-label="Search"
                   >
                     <FiSearch className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
@@ -311,10 +310,10 @@ const Navbar = () => {
 
                 {/* Wishlist Button */}
                 {headerSettings?.wishlistVisible !== false && (
-                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="shrink-0">
+                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="shrink-0 flex items-center">
                     <Link
                       to={isAuthenticated ? "/wishlist" : "/login"}
-                      className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-red-400 hover:bg-white/5 transition-all flex"
+                      className="relative p-2 sm:p-2 rounded-xl text-white/70 hover:text-red-400 hover:bg-white/5 transition-all flex items-center justify-center h-9 w-9"
                       aria-label="Wishlist"
                     >
                       <FiHeart className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
@@ -346,7 +345,7 @@ const Navbar = () => {
                         openDrawer('cart');
                       }
                     }}
-                    className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0"
+                    className="relative p-2 sm:p-2 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all cursor-pointer shrink-0 flex items-center justify-center h-9 w-9"
                     aria-label="Cart"
                   >
                     <FiShoppingBag className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
@@ -367,10 +366,10 @@ const Navbar = () => {
 
                 {/* Notifications Button (Desktop only) */}
                 {isAuthenticated && headerSettings?.notificationVisible !== false && (
-                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="hidden md:block shrink-0">
+                  <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="hidden md:flex items-center shrink-0">
                     <Link
                       to="/notifications"
-                      className="relative p-2 sm:p-2.5 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all flex"
+                      className="relative p-2 sm:p-2 rounded-xl text-white/70 hover:text-amber-400 hover:bg-white/5 transition-all flex items-center justify-center h-9 w-9"
                       aria-label="Notifications"
                     >
                       <FiBell className="w-5 h-5 sm:w-[18px] sm:h-[18px]" />
@@ -385,7 +384,7 @@ const Navbar = () => {
 
                 {/* User Account Button & Dropdown */}
                 {headerSettings?.profileVisible !== false && (
-                  <div className="relative shrink-0 ml-1">
+                  <div className="relative shrink-0 ml-1 flex items-center">
                     {isAuthenticated ? (
                       <motion.button
                         ref={userBtnRef}
@@ -395,24 +394,24 @@ const Navbar = () => {
                           setIsUserMenuOpen(!isUserMenuOpen);
                           setActiveMegaMenu(null);
                         }}
-                        className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-amber-400/40 hover:border-amber-400 shadow-sm shrink-0 min-w-[36px] min-h-[36px] justify-center"
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-amber-400/40 hover:border-amber-400 shadow-sm shrink-0 h-9 justify-center"
                         aria-label="Account menu"
                       >
                         {userAvatar ? (
                           <img
                             src={userAvatar}
                             alt={userName}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-amber-400/50 shadow shrink-0"
+                            className="w-6 h-6 rounded-lg object-cover border border-amber-400/50 shadow shrink-0"
                           />
                         ) : (
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-xs font-black shadow shrink-0">
+                          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-black text-[11px] font-black shadow shrink-0">
                             {userInitial}
                           </div>
                         )}
-                        <span className="hidden md:inline text-xs font-bold text-white/90 max-w-[80px] truncate">
+                        <span className="hidden md:inline text-xs font-bold text-white/90 max-w-[80px] truncate leading-none">
                           {firstWord}
                         </span>
-                        <FiChevronDown size={13} className={`hidden sm:block text-white/60 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                        <FiChevronDown size={12} className={`hidden sm:block text-white/60 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                       </motion.button>
                     ) : (
                       <motion.button
