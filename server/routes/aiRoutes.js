@@ -9,6 +9,7 @@ router.get('/personalized', optionalAuth, aiController.getPersonalized);
 router.get('/cart-recommendations', optionalAuth, aiController.getCartRecommendations);
 router.post('/stylist', optionalAuth, aiController.getPersonalStylist);
 router.post('/visual-search', optionalAuth, aiController.searchByVisualImage);
+router.post('/compare', optionalAuth, aiController.compareProducts);
 router.get('/recommendations/:productId', aiController.getRecommendations);
 router.post('/back-in-stock', aiController.subscribeBackInStock);
 router.get('/admin/search-analytics', aiController.getSearchAnalytics);

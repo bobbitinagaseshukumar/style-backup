@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiMessageSquare, FiX, FiSend, FiShoppingBag, FiTruck,
   FiRefreshCw, FiZap, FiTrash2, FiDownload, FiUser, FiCpu,
-  FiCheckCircle, FiHeart, FiTag, FiStar, FiCamera
+  FiCheckCircle, FiHeart, FiTag, FiStar, FiCamera,
+  FiMic, FiMicOff, FiVolume2, FiVolumeX, FiLayers, FiGlobe
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -44,9 +45,112 @@ const ChatbotWidget = () => {
   const abortControllerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [visualSearchLoading, setVisualSearchLoading] = useState(false);
+
+  // Phase 7 — Voice Shopping & Speech Synthesis States
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState('en-IN');
+  const [speakingMsgId, setSpeakingMsgId] = useState(null);
+  const recognitionRef = useRef(null);
+
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+
+  /**
+   * Phase 7: Voice Recognition Handler using Browser Speech Recognition
+   */
+  const handleVoiceClick = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    // Step 3: Browser compatibility check
+    if (!SpeechRecognition) {
+      toast.info("Voice shopping isn't supported in this browser. Please type your request instead.");
+      return;
+    }
+
+    if (isListening) {
+      // Step 15: Stop button
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      // Step 5: Request permission on explicit user tap
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = voiceLang;
+
+      // Step 14: Clear states
+      setIsListening(true);
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        // Step 6: Recognized text appears inside input box
+        if (transcript) {
+          setInputValue(transcript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('[VoiceRecognition] Error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+          toast.error('Microphone permission was denied. You can type your request instead.');
+        } else if (event.error === 'no-speech') {
+          toast.info("I couldn't understand that. Please try again or type your request.");
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error('[VoiceRecognition] Failed to start:', err);
+      setIsListening(false);
+      toast.error('Could not access microphone.');
+    }
+  };
+
+  /**
+   * Phase 7 Step 26: Optional Text-to-Speech (read response aloud)
+   */
+  const toggleSpeech = (msgId, text) => {
+    if (!('speechSynthesis' in window)) {
+      toast.info('Text-to-speech is not supported in your browser.');
+      return;
+    }
+
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = voiceLang;
+
+    utterance.onend = () => setSpeakingMsgId(null);
+    utterance.onerror = () => setSpeakingMsgId(null);
+
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -487,9 +591,22 @@ const ChatbotWidget = () => {
                 </div>
               </div>
 
-              <button onClick={() => setIsOpen(false)} title="Close" className="text-gray-400 hover:text-white p-1 rounded-lg">
-                <FiX className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={voiceLang}
+                  onChange={(e) => setVoiceLang(e.target.value)}
+                  className="bg-black/60 border border-white/20 text-gold-400 text-[10px] rounded-lg px-1.5 py-0.5 focus:outline-none cursor-pointer"
+                  title="Select Speech Recognition Language"
+                >
+                  <option value="en-IN">🇬🇧 EN</option>
+                  <option value="hi-IN">🇮🇳 HI</option>
+                  <option value="te-IN">🇮🇳 TE</option>
+                </select>
+
+                <button onClick={() => setIsOpen(false)} title="Close" className="text-gray-400 hover:text-white p-1 rounded-lg">
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* MESSAGES BODY */}
@@ -545,6 +662,40 @@ const ChatbotWidget = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Phase 8: Smart AI Product Comparison Matrix */}
+                  {(m.data?.type === 'COMPARISON_CARD' || m.type === 'COMPARISON_CARD' || m.data?.comparison || m.comparison) && (
+                    <div className="mt-2 p-3 rounded-2xl bg-white/5 border border-gold-500/30 space-y-2 w-full max-w-[88%]">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                          <FiLayers className="w-3.5 h-3.5" /> Product Comparison
+                        </h4>
+                        <span className="text-[9px] text-emerald-400 font-bold">
+                          {(m.data?.comparison?.products || m.comparison?.products || []).length} Items Evaluated
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {(m.data?.comparison?.products || m.comparison?.products || []).map(item => (
+                          <div key={item.id} className="flex items-center justify-between text-[10px] text-gray-300 bg-black/40 p-1.5 rounded-lg">
+                            <span className="truncate max-w-[140px] font-semibold">{item.name}</span>
+                            <span className="font-black text-gold-400">₹{item.finalPrice || item.price}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                        <span className="text-[9px] text-gray-400">Objective decision scoring</span>
+                        <button
+                          onClick={() => {
+                            setIsOpen(false);
+                            navigate('/compare');
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-gold-500 to-amber-500 text-black font-bold text-[9px] hover:from-gold-400 transition cursor-pointer"
+                        >
+                          View Full Matrix →
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -658,6 +809,23 @@ const ChatbotWidget = () => {
               }}
             />
 
+            {/* Phase 7: LISTENING STATUS BANNER */}
+            {isListening && (
+              <div className="px-3.5 py-1.5 bg-red-600/20 border-t border-red-500/30 flex items-center justify-between text-[10px] text-red-300 animate-pulse shrink-0">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                  🔴 Listening ({voiceLang === 'hi-IN' ? 'हिन्दी' : voiceLang === 'te-IN' ? 'తెలుగు' : 'English'})...
+                </span>
+                <button
+                  type="button"
+                  onClick={handleVoiceClick}
+                  className="px-2 py-0.5 rounded bg-red-500 text-white font-bold text-[9px] hover:bg-red-600 transition"
+                >
+                  Stop Listening
+                </button>
+              </div>
+            )}
+
             {/* INPUT FORM */}
             <form
               onSubmit={(e) => {
@@ -666,6 +834,7 @@ const ChatbotWidget = () => {
               }}
               className="p-3 bg-black border-t border-white/10 flex items-center gap-2 shrink-0"
             >
+              {/* Visual Search Upload */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -675,9 +844,23 @@ const ChatbotWidget = () => {
                 <FiCamera className="w-4 h-4" />
               </button>
 
+              {/* Phase 7: Voice Shopping Microphone Button */}
+              <button
+                type="button"
+                onClick={handleVoiceClick}
+                title={isListening ? 'Stop listening' : 'Start Voice Shopping (Speak)'}
+                className={`p-2 rounded-xl border transition cursor-pointer relative ${
+                  isListening
+                    ? 'bg-red-600 border-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.6)]'
+                    : 'bg-white/5 border-white/10 text-gold-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {isListening ? <FiMicOff className="w-4 h-4" /> : <FiMic className="w-4 h-4" />}
+              </button>
+
               <input
                 type="text"
-                placeholder={isStreaming ? 'AI is responding...' : 'Ask about products, outfits, budgets...'}
+                placeholder={isListening ? 'Listening to your voice...' : isStreaming ? 'AI is responding...' : 'Ask or speak product, outfit, budget...'}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={isStreaming}

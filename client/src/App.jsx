@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import AppRoutes from './routes/AppRoutes';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import NetworkStatus from './components/common/NetworkStatus';
+import CompareDrawer from './components/common/CompareDrawer';
 import { getMe, logoutUser } from './redux/auth/authSlice';
 import { fetchStoreSettings } from './redux/settings/settingsSlice';
 import { fetchServerCart } from './redux/cart/cartSlice';
@@ -203,6 +204,7 @@ const App = () => {
     <ErrorBoundary>
       <NetworkStatus />
       <AppRoutes />
+      <CompareDrawer />
     </ErrorBoundary>
   );
 };

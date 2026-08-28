@@ -4,6 +4,7 @@ const geminiService = require('./geminiService');
 const productIntentService = require('./productIntentService');
 const stylistService = require('./stylistService');
 const visualSearchService = require('./visualSearchService');
+const comparisonService = require('./comparisonService');
 
 /**
  * Enterprise Intelligent AI Shopping Assistant Service
@@ -34,6 +35,10 @@ class ChatbotService {
   /* ══════════════════════════════════════════════════════════════════
      INTENT DETECTORS (improved with word-boundary matching)
   ══════════════════════════════════════════════════════════════════ */
+
+  isComparisonQuery(q) {
+    return this._matchesAny(q, ['compare', 'vs', 'versus', 'which is best', 'which one is best', 'which is cheapest', 'which has highest rating', 'which is best value', 'which should i buy', 'which one should i buy', 'difference between', 'better choice']);
+  }
 
   isEscalationQuery(q) {
     return this._matchesAny(q, ['human', 'agent', 'person', 'frustrated', 'useless', 'escalate', 'complaint', 'customer care', 'speak to someone', 'real person']);
@@ -537,6 +542,39 @@ class ChatbotService {
         extractedIntent = await geminiService.extractIntent(q, history);
       } catch (gemErr) {
         console.warn('[ChatbotService] Gemini intent extraction fallback:', gemErr.message);
+      }
+    }
+
+    // ─── PHASE 8: Smart AI Product Comparison Routing ───
+    const isCompareReq = this.isComparisonQuery(q) || extractedIntent?.intent === 'compare';
+    if (isCompareReq) {
+      const candidates = await productIntentService.searchProductsByIntent(extractedIntent, q);
+      if (candidates.length >= 2) {
+        const candidateIds = candidates.slice(0, 4).map(p => p.id);
+        const goal = q.includes('cheapest') ? 'cheapest'
+          : (q.includes('rating') || q.includes('rated')) ? 'highest_rated'
+          : (q.includes('value') || q.includes('worth')) ? 'best_value'
+          : 'best_overall';
+
+        const compareResult = await comparisonService.compareProducts({
+          productIds: candidateIds,
+          criteria: {
+            userPrompt: q,
+            occasion: extractedIntent?.occasion,
+            maxBudget: extractedIntent?.maxPrice,
+            goal
+          }
+        });
+
+        if (compareResult.success) {
+          return {
+            reply: `⚖️ **AI Product Comparison & Decision Assistant**:\n${compareResult.recommendation.aiExplanation}`,
+            type: 'COMPARISON_CARD',
+            comparison: compareResult.data || compareResult,
+            aiPowered: true,
+            actions: [{ label: 'View Full Comparison', action: 'VIEW_COMPARE', link: '/compare' }]
+          };
+        }
       }
     }
 

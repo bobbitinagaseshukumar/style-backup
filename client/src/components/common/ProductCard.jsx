@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiHeart, FiShoppingBag, FiStar, FiEye,
-  FiCheck, FiTruck, FiBell
+  FiCheck, FiTruck, FiBell, FiLayers
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../../redux/cart/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../redux/wishlist/wishlistSlice';
+import { toggleCompare } from '../../redux/compare/compareSlice';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -79,6 +80,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const dispatch = useDispatch();
   const user = useSelector(state => state.auth?.user);
   const wishlistItems = useSelector(state => state.wishlist?.items || []);
+  const compareItems = useSelector(state => state.compare?.items || []);
 
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -144,6 +146,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const reviewCount = product.reviewCount || product.totalReviews || product.numReviews || 0;
 
   const isWishlisted = wishlistItems.some(item => (item._id || item.id) === (product._id || product.id));
+  const isCompared = compareItems.some(item => (item._id || item.id) === (product._id || product.id));
 
   const colors = (() => {
     try {
@@ -304,6 +307,26 @@ const ProductCard = ({ product, index = 0 }) => {
               </span>
             </div>
           )}
+
+          {/* ── Compare Glass Button ──── */}
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              dispatch(toggleCompare(product));
+            }}
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.88 }}
+            className={`absolute top-3 left-3 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center backdrop-blur-xl border transition-all duration-300 shadow-lg ${
+              isCompared
+                ? 'bg-amber-400 border-amber-300 text-black shadow-amber-400/30'
+                : 'bg-white/70 border-white/40 text-gray-600 hover:text-amber-600 hover:bg-white/90 shadow-black/5'
+            }`}
+            aria-label={isCompared ? 'Remove from compare' : 'Add to compare'}
+            title={isCompared ? 'Remove from compare' : 'Compare product'}
+          >
+            <FiLayers className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+          </motion.button>
 
           {/* ── Wishlist Glass Button (ONLY element on image) ──── */}
           <motion.button

@@ -11,6 +11,7 @@ import orderReducer from './order/orderSlice';
 import settingsReducer from './settings/settingsSlice';
 import notificationReducer from './notification/notificationSlice';
 import adminReducer from './admin/adminSlice';
+import compareReducer from './compare/compareSlice';
 
 const createNoopStorage = () => {
   return {
@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
   auth: persistReducer({ key: 'auth', storage: safeStorage }, authReducer),
   cart: persistReducer({ key: 'cart', storage: safeStorage }, cartReducer),
   wishlist: persistReducer({ key: 'wishlist', storage: safeStorage }, wishlistReducer),
+  compare: persistReducer({ key: 'compare', storage: safeStorage }, compareReducer),
   settings: persistReducer({ key: 'settings', storage: safeStorage }, settingsReducer),
   product: productReducer,
   category: categoryReducer,

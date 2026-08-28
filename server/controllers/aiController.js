@@ -54,6 +54,23 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 const recommendationService = require('../services/recommendationService');
 const stylistService = require('../services/stylistService');
 const visualSearchService = require('../services/visualSearchService');
+const comparisonService = require('../services/comparisonService');
+
+// ==================== SMART PRODUCT COMPARISON ====================
+exports.compareProducts = asyncHandler(async (req, res, next) => {
+  const { productIds, criteria } = req.body;
+  if (!productIds || !Array.isArray(productIds) || productIds.length < 2) {
+    return next(new ApiError(400, 'Please select at least 2 products to compare (up to 4)'));
+  }
+  const result = await comparisonService.compareProducts({
+    productIds,
+    criteria: criteria || {}
+  });
+  if (!result.success) {
+    return next(new ApiError(400, result.error || 'Failed to compare products'));
+  }
+  res.status(200).json({ success: true, data: result });
+});
 
 // ==================== OCCASION + BUDGET PERSONAL STYLIST ====================
 exports.getPersonalStylist = asyncHandler(async (req, res) => {
