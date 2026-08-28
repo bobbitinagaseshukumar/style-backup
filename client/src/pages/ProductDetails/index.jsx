@@ -68,6 +68,7 @@ const TrustBadges = () => (
 /* ═══ FULLSCREEN LIGHTBOX GALLERY ═══ */
 const FullscreenGallery = ({ images, initialIdx, onClose }) => {
   const [idx, setIdx] = useState(initialIdx);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const prev = () => setIdx(i => (i - 1 + images.length) % images.length);
   const next = () => setIdx(i => (i + 1) % images.length);
   useEffect(() => {
@@ -79,10 +80,28 @@ const FullscreenGallery = ({ images, initialIdx, onClose }) => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  };
+  const handleTouchEnd = (e) => {
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 500) {
+      if (dx < 0) next();
+      else prev();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button onClick={onClose} className="absolute top-5 right-5 text-white/60 hover:text-white p-2 rounded-xl hover:bg-white/10 transition">
         <FiX size={24} />
@@ -94,7 +113,8 @@ const FullscreenGallery = ({ images, initialIdx, onClose }) => {
         <motion.img
           key={idx} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           src={images[idx]?.url || images[idx]} alt=""
-          className="max-h-[82vh] object-contain rounded-2xl"
+          className="max-h-[82vh] object-contain rounded-2xl pointer-events-none"
+          draggable={false}
         />
         <button onClick={next} className="absolute right-4 z-10 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition">
           <FiChevronRight size={24} />
@@ -113,12 +133,13 @@ const FullscreenGallery = ({ images, initialIdx, onClose }) => {
   );
 };
 
-/* ═══ MAIN IMAGE GALLERY WITH HOVER MAGNIFIER ═══ */
+/* ═══ MAIN IMAGE GALLERY WITH HOVER MAGNIFIER + TOUCH SWIPE ═══ */
 const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
   const [zoom, setZoom] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [fullscreen, setFullscreen] = useState(false);
   const imgRef = useRef();
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
 
   const onMouseMove = useCallback((e) => {
     if (!imgRef.current) return;
@@ -131,6 +152,30 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
   const allImages = images?.length > 0 ? images : [{ url: 'https://placehold.co/600x800/f3f4f6/9ca3af?text=No+Image' }];
   const mainImg = allImages[selectedIdx]?.url || allImages[selectedIdx] || allImages[0]?.url;
 
+  /* ── Touch swipe handlers for mobile ── */
+  const handleTouchStart = useCallback((e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+
+    // Only treat as swipe if horizontal distance > 40px, more horizontal than vertical, and within 500ms
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 500 && allImages.length > 1) {
+      if (dx < 0) {
+        // Swipe left → next image
+        onChange((selectedIdx + 1) % allImages.length);
+      } else {
+        // Swipe right → previous image
+        onChange((selectedIdx - 1 + allImages.length) % allImages.length);
+      }
+    }
+  }, [allImages.length, selectedIdx, onChange]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Main image card */}
@@ -139,18 +184,21 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
         onMouseEnter={() => setZoom(true)}
         onMouseLeave={() => setZoom(false)}
         onMouseMove={onMouseMove}
-        className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 cursor-zoom-in group shadow-sm"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 cursor-zoom-in group shadow-sm touch-pan-y"
       >
         <motion.img
           key={mainImg}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}
           src={mainImg} alt=""
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover pointer-events-none"
           style={zoom ? {
             transform: 'scale(2.4)',
             transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
             transition: 'transform 0.08s ease',
           } : { transition: 'transform 0.3s ease' }}
+          draggable={false}
         />
 
         {/* Action icons overlay */}
@@ -175,8 +223,19 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
           </>
         )}
 
-        {/* Counter */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white text-[11px] px-3 py-1 rounded-full font-semibold tracking-wide">
+        {/* Swipe indicator dots (mobile-only, visible always) */}
+        {allImages.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 md:hidden">
+            {allImages.map((_, i) => (
+              <button key={i} onClick={() => onChange(i)}
+                className={`rounded-full transition-all duration-300 ${i === selectedIdx ? 'w-6 h-2 bg-amber-400' : 'w-2 h-2 bg-white/60'}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Counter (desktop) */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white text-[11px] px-3 py-1 rounded-full font-semibold tracking-wide hidden md:block">
           {selectedIdx + 1} / {allImages.length}
         </div>
       </div>
@@ -202,6 +261,7 @@ const ImageGallery = ({ images, selectedIdx, onChange, videoUrl }) => {
     </div>
   );
 };
+
 
 /* ═══ FLASH SALE COUNTDOWN TIMER CARD ═══ */
 const FlashSaleTimer = ({ endDate }) => {

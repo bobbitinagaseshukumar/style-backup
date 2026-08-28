@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiFilter, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiLayers, FiCheck } from 'react-icons/fi';
@@ -6,13 +6,18 @@ import api from '../../config/api';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatImageUrl } from '../../utils/formatImageUrl';
 
+/* ─── Module-level caches survive SPA navigation ─── */
+let _categoriesCache = null;
+let _productsCache = {};  // keyed by URL params
+let _subcategoriesCache = {};
+
 const Categories = () => {
   const { slug } = useParams();
 
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(_categoriesCache || []);
   const [subcategories, setSubcategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!_categoriesCache);
 
   // Filter & Sort state
   const [selectedCategory, setSelectedCategory] = useState(slug || '');
@@ -28,7 +33,9 @@ const Categories = () => {
     const fetchCategories = async () => {
       try {
         const { data } = await api.get('/categories');
-        setCategories(data.data || []);
+        const cats = data.data || [];
+        _categoriesCache = cats;
+        setCategories(cats);
       } catch (err) {
         console.error(err);
       }
@@ -45,8 +52,15 @@ const Categories = () => {
           const found = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
           if (found) url += `&categoryId=${found.id}`;
         }
+        // Check cache first
+        const cacheKey = url;
+        if (_subcategoriesCache[cacheKey]) {
+          setSubcategories(_subcategoriesCache[cacheKey]);
+        }
         const { data } = await api.get(url);
-        setSubcategories(data.data || []);
+        const subs = data.data || [];
+        _subcategoriesCache[cacheKey] = subs;
+        setSubcategories(subs);
       } catch (err) {
         setSubcategories([]);
       }
@@ -54,35 +68,46 @@ const Categories = () => {
     fetchSubcategories();
   }, [selectedCategory, categories]);
 
-  // Fetch Products based on Category & Subcategory selections (With 15-Second Real-Time Polling Sync)
+  // Fetch Products - show cached data instantly, refresh in background
   useEffect(() => {
     let isMounted = true;
 
     const fetchProducts = async () => {
+      let url = `/products?limit=50`;
+
+      if (selectedCategory) {
+        const foundCat = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
+        if (foundCat) {
+          url += `&category=${foundCat.id}`;
+        } else {
+          url += `&category=${encodeURIComponent(selectedCategory)}`;
+        }
+      }
+
+      if (selectedSubcategory) {
+        url += `&subCategory=${encodeURIComponent(selectedSubcategory)}`;
+      }
+
+      if (filterFeatured) url += `&featured=true`;
+      if (filterTrending) url += `&trending=true`;
+
+      if (sortOption === 'price_asc') url += `&sort=price_asc`;
+      else if (sortOption === 'price_desc') url += `&sort=price_desc`;
+
+      const cacheKey = url;
+
+      // Show cached products instantly (no loading spinner)
+      if (_productsCache[cacheKey]) {
+        if (isMounted) {
+          setProducts(_productsCache[cacheKey]);
+          setLoading(false);
+        }
+      }
+
       try {
-        let url = `/products?limit=50`;
-
-        if (selectedCategory) {
-          const foundCat = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
-          if (foundCat) {
-            url += `&category=${foundCat.id}`;
-          } else {
-            url += `&category=${encodeURIComponent(selectedCategory)}`;
-          }
-        }
-
-        if (selectedSubcategory) {
-          url += `&subCategory=${encodeURIComponent(selectedSubcategory)}`;
-        }
-
-        if (filterFeatured) url += `&featured=true`;
-        if (filterTrending) url += `&trending=true`;
-
-        if (sortOption === 'price_asc') url += `&sort=price_asc`;
-        else if (sortOption === 'price_desc') url += `&sort=price_desc`;
-
         const { data } = await api.get(url);
         const prods = data.data?.products || (Array.isArray(data.data) ? data.data : []);
+        _productsCache[cacheKey] = prods;
         if (isMounted) {
           setProducts(prods);
           setLoading(false);

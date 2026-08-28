@@ -84,9 +84,12 @@ const AdminProducts = () => {
   const [actionDropdown, setActionDropdown] = useState(null);
 
   /* ─── FETCH PRODUCTS ────────────────────────────────────── */
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (isBackground = false) => {
     try {
-      setLoading(true);
+      // Only show loading skeleton on initial load, NOT on background polling
+      if (!isBackground) {
+        setLoading(true);
+      }
       setError(null);
       const params = new URLSearchParams({
         includeAll: 'true',
@@ -111,7 +114,7 @@ const AdminProducts = () => {
         setTotalProducts(d?.pagination?.total || prodList.length || 0);
         setTotalPages(d?.pagination?.pages || 1);
         setError(null);
-      } else {
+      } else if (!isBackground) {
         setProducts([]);
         setError(null);
       }
@@ -120,21 +123,23 @@ const AdminProducts = () => {
         setCategories(catRes.value.data?.data || []);
       }
     } catch (err) {
-      setError('Unable to load products. Please check your connection.');
-      setProducts([]);
+      if (!isBackground) {
+        setError('Unable to load products. Please check your connection.');
+        setProducts([]);
+      }
     } finally {
       setLoading(false);
     }
   }, [page, pageSize, sortBy, statusFilter, categoryFilter, search]);
 
-  // Fetch products and poll every 15s for multi-device sync
+  // Initial fetch + background polling (every 30s instead of 15s to reduce load)
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(false); // Initial load with skeleton
     const interval = setInterval(() => {
-      fetchProducts();
-    }, 15000);
+      fetchProducts(true); // Background refresh, NO skeleton
+    }, 30000);
 
-    const handleFocus = () => fetchProducts();
+    const handleFocus = () => fetchProducts(true); // Background refresh on focus
     window.addEventListener('focus', handleFocus);
 
     return () => {
@@ -142,6 +147,7 @@ const AdminProducts = () => {
       window.removeEventListener('focus', handleFocus);
     };
   }, [fetchProducts]);
+
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [search, statusFilter, categoryFilter, sortBy, pageSize]);
