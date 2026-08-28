@@ -35,14 +35,15 @@ class InventoryForecastService {
     });
 
     // Step 2 & 3: Fetch order items for current and previous periods
-    // Count valid orders (DELIVERED, SHIPPED, CONFIRMED, PACKED, PENDING_APPROVAL)
-    const validStatuses = ['DELIVERED', 'SHIPPED', 'CONFIRMED', 'PACKED', 'PENDING_APPROVAL'];
+    // Count valid completed orders only (exclude PENDING_APPROVAL, CANCELLED, REJECTED)
+    const validStatuses = ['DELIVERED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'PACKED', 'CONFIRMED'];
 
     const currentOrderItems = await prisma.orderItem.findMany({
       where: {
         order: {
           createdAt: { gte: currentPeriodStart },
-          orderStatus: { in: validStatuses }
+          orderStatus: { in: validStatuses },
+          paymentStatus: { not: 'FAILED' }
         }
       },
       select: { productId: true, quantity: true, price: true }
@@ -52,7 +53,8 @@ class InventoryForecastService {
       where: {
         order: {
           createdAt: { gte: previousPeriodStart, lt: currentPeriodStart },
-          orderStatus: { in: validStatuses }
+          orderStatus: { in: validStatuses },
+          paymentStatus: { not: 'FAILED' }
         }
       },
       select: { productId: true, quantity: true }

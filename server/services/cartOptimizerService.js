@@ -53,7 +53,7 @@ class CartOptimizerService {
           }
         }
       });
-      rawItems = cart?.items || [];
+      rawItems = (cart?.items || []).filter(ci => ci.product);
     } else if (Array.isArray(guestCartItems) && guestCartItems.length > 0) {
       // Re-verify guest items against DB
       const pIds = guestCartItems.map(i => i.id || i.productId).filter(Boolean);
@@ -72,7 +72,7 @@ class CartOptimizerService {
         .map(gi => ({
           id: gi.cartItemId || gi.id,
           productId: gi.id || gi.productId,
-          quantity: Math.max(1, parseInt(gi.quantity || 1, 10)),
+          quantity: Math.max(1, parseInt(gi.quantity, 10) || 1),
           size: gi.size || '',
           color: gi.color || '',
           product: pMap.get(gi.id || gi.productId)
@@ -91,7 +91,7 @@ class CartOptimizerService {
     const cartItems = rawItems.map(ci => {
       const p = ci.product;
       const finalPrice = this._getEffectivePrice(p);
-      const qty = Math.max(1, parseInt(ci.quantity || 1, 10));
+      const qty = Math.max(1, parseInt(ci.quantity, 10) || 1);
       return {
         cartItemId: ci.id,
         productId: p.id,
@@ -137,23 +137,53 @@ class CartOptimizerService {
     const replacementCandidatesMap = new Map(); // cartItemId -> candidate products
 
     for (const item of cartItems) {
-      // Find products in same category/subcategory with lower price and stock > 0
-      const candidates = await prisma.product.findMany({
+      // First try same subcategory, then fallback to category-only
+      const subCatFilter = item.subCategoryId ? { subCategoryId: item.subCategoryId } : {};
+      let candidates = await prisma.product.findMany({
         where: {
           id: { notIn: cartProductIds },
           status: 'PUBLISHED',
           isVisible: true,
-          stock: { gt: 0 },
+          stock: { gte: item.quantity },
           categoryId: item.categoryId,
-          price: { lt: item.finalPrice }
+          ...subCatFilter,
+          OR: [
+            { discountPrice: { gt: 0, lt: item.finalPrice } },
+            { price: { lt: item.finalPrice }, discountPrice: { equals: 0 } },
+            { price: { lt: item.finalPrice }, discountPrice: null }
+          ]
         },
         include: {
           images: { orderBy: { isPrimary: 'desc' }, take: 1 },
           category: { select: { id: true, name: true } }
         },
-        orderBy: { discountPrice: 'asc' },
+        orderBy: { price: 'asc' },
         take: 10
       });
+
+      // Fallback: if no subcategory matches, broaden to category-only
+      if (candidates.length === 0 && item.subCategoryId) {
+        candidates = await prisma.product.findMany({
+          where: {
+            id: { notIn: cartProductIds },
+            status: 'PUBLISHED',
+            isVisible: true,
+            stock: { gte: item.quantity },
+            categoryId: item.categoryId,
+            OR: [
+              { discountPrice: { gt: 0, lt: item.finalPrice } },
+              { price: { lt: item.finalPrice }, discountPrice: { equals: 0 } },
+              { price: { lt: item.finalPrice }, discountPrice: null }
+            ]
+          },
+          include: {
+            images: { orderBy: { isPrimary: 'desc' }, take: 1 },
+            category: { select: { id: true, name: true } }
+          },
+          orderBy: { price: 'asc' },
+          take: 10
+        });
+      }
 
       // Filter and score candidates by effective price and similarity
       const validCandidates = candidates
@@ -189,6 +219,11 @@ class CartOptimizerService {
     let bestNewTotal = Infinity;
     let bestTotalSavings = 0;
     let fewestReplacements = Infinity;
+
+    // Separate tracker for partial optimization (when budget can't be fully met)
+    let bestPartialCombination = null;
+    let bestPartialTotal = Infinity;
+    let bestPartialSavings = 0;
 
     // Generate possible replacement scenarios
     // 1-item replacement scenarios first, then 2-item, etc.
@@ -250,14 +285,21 @@ class CartOptimizerService {
           bestTotalSavings = scenarioSavings;
           bestCombination = scenario;
         }
-      } else if (!bestCombination) {
-        // Track closest partial optimization if exact budget target unreachable
-        if (scenarioTotal < bestNewTotal) {
-          bestNewTotal = scenarioTotal;
-          bestTotalSavings = scenarioSavings;
-          bestCombination = scenario;
+      } else {
+        // Track closest partial optimization across ALL scenarios
+        if (scenarioTotal < bestPartialTotal) {
+          bestPartialTotal = scenarioTotal;
+          bestPartialSavings = scenarioSavings;
+          bestPartialCombination = scenario;
         }
       }
+    }
+
+    // Fall back to best partial combination if no exact budget match found
+    if (!bestCombination && bestPartialCombination) {
+      bestCombination = bestPartialCombination;
+      bestNewTotal = bestPartialTotal;
+      bestTotalSavings = bestPartialSavings;
     }
 
     // Step 31: No suitable alternatives found

@@ -247,6 +247,23 @@ exports.removeCartItem = asyncHandler(async (req, res, next) => {
   });
 });
 
+// ==================== 6. CLEAR CART ====================
+exports.clearCart = asyncHandler(async (req, res, next) => {
+  const cart = await prisma.cart.findUnique({ where: { userId: req.user.id } });
+
+  if (cart) {
+    await prisma.cartItem.deleteMany({
+      where: { cartId: cart.id }
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Cart cleared',
+    data: { items: [] }
+  });
+});
+
 // ==================== 7. APPLY CART BUDGET OPTIMIZATION (STEP 18 & 19) ====================
 exports.applyCartOptimization = asyncHandler(async (req, res, next) => {
   const { replacements = [] } = req.body;
@@ -285,16 +302,23 @@ exports.applyCartOptimization = asyncHandler(async (req, res, next) => {
       ? await prisma.cartItem.findFirst({ where: { id: originalCartItemId, cartId: cart.id } })
       : null;
 
-    const qty = origItem ? origItem.quantity : Math.max(1, parseInt(rep.quantity || 1, 10));
+    const qty = origItem ? origItem.quantity : Math.max(1, parseInt(rep.quantity, 10) || 1);
+
+    // Validate stock covers required quantity
+    if (targetProduct.stock < qty) {
+      return next(new ApiError(400, `'${targetProduct.name}' only has ${targetProduct.stock} units in stock (need ${qty}). Please refresh recommendations.`));
+    }
 
     // Remove old item if specified
     if (origItem) {
       await prisma.cartItem.delete({ where: { id: origItem.id } });
     }
 
-    // Add or update new product in cart
+    // Add or update new product in cart (match size + color to avoid merging different variants)
+    const targetSize = origItem?.size || null;
+    const targetColor = origItem?.color || null;
     const existingTargetItem = await prisma.cartItem.findFirst({
-      where: { cartId: cart.id, productId: targetProductId }
+      where: { cartId: cart.id, productId: targetProductId, size: targetSize, color: targetColor }
     });
 
     if (existingTargetItem) {
@@ -308,8 +332,8 @@ exports.applyCartOptimization = asyncHandler(async (req, res, next) => {
           cartId: cart.id,
           productId: targetProductId,
           quantity: qty,
-          size: origItem?.size || null,
-          color: origItem?.color || null
+          size: targetSize,
+          color: targetColor
         }
       });
     }

@@ -26,7 +26,10 @@ class ChatbotService {
     return (
       (q.includes('cart') || q.includes('reduce') || q.includes('reduce my') || q.includes('cut') || q.includes('lower') || q.includes('expensive')) &&
       (q.includes('budget') || q.includes('expensive') || q.includes('over') || /\b(under|below|less than|only have|have|max|limit|₹|\d+)\b/i.test(q))
-    ) || /reduce my cart|keep my cart|cart is too expensive|cart budget|reduce cart|help me reduce/i.test(q);
+    ) || /reduce my cart|keep my cart|cart is too expensive|cart budget|reduce cart|help me reduce/i.test(q)
+      || /i only have\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q)
+      || /my budget\s*(?:is)?\s*(?:₹|rs\.?|inr)?\s*\d+/i.test(q)
+      || (/\b(only have|budget|don'?t want to spend|spend more than|can'?t afford|too much)\b/i.test(q) && /(?:₹|rs\.?|inr)?\s*\d{3,}/i.test(q));
   }
 
   isOfferQuery(q) {
@@ -97,7 +100,7 @@ class ChatbotService {
   }
 
   isPaymentQuery(q) {
-    return this._matchesAny(q, ['pay', 'payment', 'upi', 'cod', 'coupon', 'offer', 'discount', 'promo']) ||
+    return this._matchesAny(q, ['pay', 'payment', 'upi', 'cod', 'netbanking', 'razorpay', 'gpay', 'phonpe']) ||
            (this._matchesWord(q, 'card') && (q.includes('credit') || q.includes('debit') || q.includes('pay')));
   }
 
@@ -233,9 +236,19 @@ class ChatbotService {
       return await this.handleOrderSupport({ q, user });
     }
 
+    // 2.5 — Phase 9: AI Cart Budget Optimization (must be before isCartQuery)
+    if (this.isCartBudgetQuery(q)) {
+      return await this._handleCartBudgetQuery({ q, user, query });
+    }
+
+    // 2.6 — Phase 10: AI Personalized Offers (must be before isPaymentQuery)
+    if (this.isOfferQuery(q)) {
+      return await this._handleOfferQuery({ q, user });
+    }
+
     // 3. Product Search
     if (this.isProductSearchQuery(q)) {
-      return await this.handleProductSearch({ q, history: history || [] });
+      return await this.handleProductSearch({ q, user, history: history || [] });
     }
 
     // 4. Cart & Wishlist
@@ -386,8 +399,19 @@ class ChatbotService {
     if (this.isOrderQuery(q)) {
       return { streamed: false, data: await this.handleOrderSupport({ q, user }) };
     }
+
+    // Phase 9: AI Cart Budget Optimization (must be before isCartQuery)
+    if (this.isCartBudgetQuery(q)) {
+      return { streamed: false, data: await this._handleCartBudgetQuery({ q, user, query }) };
+    }
+
+    // Phase 10: AI Personalized Offers (must be before isPaymentQuery)
+    if (this.isOfferQuery(q)) {
+      return { streamed: false, data: await this._handleOfferQuery({ q, user }) };
+    }
+
     if (this.isProductSearchQuery(q)) {
-      return { streamed: false, data: await this.handleProductSearch({ q, history: history || [] }) };
+      return { streamed: false, data: await this.handleProductSearch({ q, user, history: history || [] }) };
     }
     if (this.isCartQuery(q)) {
       return { streamed: false, data: this.handleCartHelp({ user }) };
@@ -796,6 +820,96 @@ class ChatbotService {
       ticketNo,
       actions: [{ label: 'Back to Store', action: 'STORE_HOME' }]
     };
+  }
+
+  /**
+   * Phase 9 — AI Cart Budget Optimizer handler (routed from processQuery)
+   */
+  async _handleCartBudgetQuery({ q, user, query }) {
+    try {
+      const budgetMatch = q.match(/(?:₹|rs\.?|inr)?\s*(\d{3,6})/i);
+      const maxBudget = budgetMatch ? parseFloat(budgetMatch[1]) : 3500;
+
+      const cartOptRes = await cartOptimizerService.optimizeCart({
+        userId: user?.id || null,
+        maxBudget,
+        userPrompt: q
+      });
+
+      if (cartOptRes.success) {
+        return {
+          reply: `🛒 **AI Smart Cart & Budget Optimizer**:\n${cartOptRes.aiExplanation || cartOptRes.message}`,
+          type: 'CART_OPTIMIZER_CARD',
+          cartOptimization: cartOptRes,
+          aiPowered: true,
+          actions: [{ label: 'Open Cart Optimizer', action: 'VIEW_CART', link: '/cart' }]
+        };
+      }
+      return {
+        reply: cartOptRes.error || 'Could not optimize your cart right now. Please try from the Cart page.',
+        type: 'INFO',
+        actions: [{ label: '🛒 Go to Cart', action: 'VIEW_CART', link: '/cart' }]
+      };
+    } catch (err) {
+      console.error('[ChatbotService] Cart budget handler error:', err.message);
+      return {
+        reply: 'Sorry, I encountered an error while analyzing your cart budget. Please try the Budget Optimizer on the Cart page.',
+        type: 'INFO',
+        actions: [{ label: '🛒 Go to Cart', action: 'VIEW_CART', link: '/cart' }]
+      };
+    }
+  }
+
+  /**
+   * Phase 10 — AI Personalized Offers handler (routed from processQuery)
+   */
+  async _handleOfferQuery({ q, user }) {
+    try {
+      // Get cart total for eligibility checks
+      let cartTotal = 0;
+      if (user?.id) {
+        const cart = await prisma.cart.findUnique({
+          where: { userId: user.id },
+          include: { items: { include: { product: { select: { price: true, discountPrice: true } } } } }
+        });
+        if (cart?.items) {
+          cartTotal = cart.items.reduce((sum, ci) => {
+            const p = ci.product;
+            if (!p) return sum;
+            const fp = (p.discountPrice && p.discountPrice > 0) ? p.discountPrice : p.price;
+            return sum + fp * (ci.quantity || 1);
+          }, 0);
+        }
+      }
+
+      const offerRes = await personalizedOfferService.getPersonalizedOffers({
+        userId: user?.id || null,
+        cartTotal,
+        userPrompt: q
+      });
+
+      if (offerRes.success) {
+        return {
+          reply: `🎁 **AI Personalized Offers & Smart Deals**:\n${offerRes.aiExplanation || offerRes.message}`,
+          type: 'OFFER_CARD',
+          offers: offerRes,
+          aiPowered: true,
+          actions: [{ label: 'View Cart & Apply', action: 'VIEW_CART', link: '/cart' }]
+        };
+      }
+      return {
+        reply: 'There are no additional offers currently available for this purchase.',
+        type: 'INFO',
+        actions: [{ label: '🔍 Browse Products', action: 'SEARCH_PRODUCT' }]
+      };
+    } catch (err) {
+      console.error('[ChatbotService] Offer handler error:', err.message);
+      return {
+        reply: 'Sorry, I had trouble finding offers right now. Please check the Cart page for available offers.',
+        type: 'INFO',
+        actions: [{ label: '🛒 Go to Cart', action: 'VIEW_CART', link: '/cart' }]
+      };
+    }
   }
 
   /**

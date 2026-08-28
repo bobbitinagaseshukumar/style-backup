@@ -32,14 +32,22 @@ class PersonalizedOfferService {
     });
 
     // Check customer order history for coupon usage limits if userId supplied
-    let userUsedCouponCodes = new Set();
+    // Uses Map for frequency counting to support perCustomerLimit > 1
+    const userUsageMap = new Map(); // couponCode (uppercase) -> count
     if (userId) {
       const userOrders = await prisma.order.findMany({
-        where: { userId, couponCode: { not: null } },
+        where: {
+          userId,
+          couponCode: { not: null },
+          orderStatus: { notIn: ['CANCELLED', 'REJECTED'] } // Don't count cancelled orders as usage
+        },
         select: { couponCode: true }
       });
       userOrders.forEach(o => {
-        if (o.couponCode) userUsedCouponCodes.add(o.couponCode.toUpperCase());
+        if (o.couponCode) {
+          const key = o.couponCode.toUpperCase();
+          userUsageMap.set(key, (userUsageMap.get(key) || 0) + 1);
+        }
       });
     }
 
@@ -50,9 +58,10 @@ class PersonalizedOfferService {
     const upcomingCoupons = [];
 
     for (const c of dbCoupons) {
-      // Step 16: Check per-customer usage limit
-      if (userId && c.perCustomerLimit && userUsedCouponCodes.has(c.code)) {
-        continue; // Already used by customer
+      // Step 16: Check per-customer usage limit (case-insensitive, supports limits > 1)
+      if (userId && c.perCustomerLimit) {
+        const usageCount = userUsageMap.get(c.code.toUpperCase()) || 0;
+        if (usageCount >= c.perCustomerLimit) continue; // Already used up by customer
       }
 
       // Check total usage limit
