@@ -44,14 +44,14 @@ api.interceptors.request.use(
     }
 
     const adminToken = localStorage.getItem('adminToken');
-    const token = localStorage.getItem('token');
+    const userToken = localStorage.getItem('token');
     const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
 
-    // On Admin panel routes (/admin/*), use adminToken (fallback to token)
-    // On Customer storefront routes, use token (fallback to adminToken only if token absent)
-    const authHeader = isAdminPath ? (adminToken || token) : (token || adminToken);
-    if (authHeader) {
-      config.headers.Authorization = `Bearer ${authHeader}`;
+    // On Admin panel routes (/admin/*), try adminToken then userToken
+    // On Storefront routes, try userToken then adminToken
+    const activeToken = isAdminPath ? (adminToken || userToken) : (userToken || adminToken);
+    if (activeToken) {
+      config.headers.Authorization = `Bearer ${activeToken}`;
     }
     return config;
   },

@@ -8,8 +8,8 @@ import { fetchStoreSettings } from './redux/settings/settingsSlice';
 import { fetchServerCart } from './redux/cart/cartSlice';
 import { fetchServerWishlist } from './redux/wishlist/wishlistSlice';
 
-// Session expires after 30 days of INACTIVITY (not since login)
-const SESSION_MAX_INACTIVE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Session expires after 90 days of total INACTIVITY (never while actively using the site)
+const SESSION_MAX_INACTIVE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
 const ACTIVITY_KEY = 'kvlr_last_activity';
 const ADMIN_ACTIVITY_KEY = 'kvlr_admin_last_activity';
 

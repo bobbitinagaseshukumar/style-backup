@@ -5,12 +5,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendOTPEmail } = require('../services/emailService');
 
-// Generate JWT Token helper
+// Generate JWT Token helper (365d long-lived active session)
 const generateToken = (id, role, tokenVersion = 0) => {
   return jwt.sign(
     { id, role, tokenVersion },
     process.env.JWT_SECRET || 'styleverse_super_secret_jwt_key_2026',
-    { expiresIn: process.env.JWT_EXPIRES_IN || '4d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '365d' }
   );
 };
 

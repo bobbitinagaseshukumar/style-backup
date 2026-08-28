@@ -191,6 +191,13 @@ const ProductWizard = ({ editProduct = null, onClose, onSaved }) => {
     setAutosaveStatus('saving');
   }, []);
 
+  /* ── Touch activity timestamp during active product editing ── */
+  useEffect(() => {
+    const now = Date.now().toString();
+    localStorage.setItem('kvlr_admin_last_activity', now);
+    localStorage.setItem('kvlr_last_activity', now);
+  }, [form, colors, images, currentStep]);
+
   /* ── Autosave indicator ────────────────────────────────────── */
   useEffect(() => {
     if (autosaveStatus !== 'saving') return;

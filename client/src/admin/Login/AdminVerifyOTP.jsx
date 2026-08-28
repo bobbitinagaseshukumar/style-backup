@@ -118,6 +118,9 @@ const AdminVerifyOTP = () => {
       const { user, token } = res.data.data;
       dispatch(setCredentials({ user, token }));
       localStorage.setItem('adminToken', token);
+      localStorage.setItem('token', token);
+      localStorage.setItem('kvlr_admin_last_activity', Date.now().toString());
+      localStorage.setItem('kvlr_last_activity', Date.now().toString());
       sessionStorage.removeItem('pendingAdminOTPAuth');
       toast.success('OTP verified! Authenticated as Administrator 🎉');
       navigate('/admin/dashboard');
