@@ -164,7 +164,7 @@ const QuickViewModal = ({ isOpen, onClose, product }) => {
           <div className="space-y-3">
             <div>
               <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest block">
-                {product.brand?.name || 'KVLR STYLES'}
+                {product.brand?.name || 'Styleverse'}
               </span>
               <h2 className="text-xl font-bold text-gray-900 leading-tight">{product.name}</h2>
             </div>

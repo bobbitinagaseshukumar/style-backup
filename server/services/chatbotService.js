@@ -138,7 +138,7 @@ class ChatbotService {
       const timeOfDay = new Date().getHours();
       const timeGreeting = timeOfDay < 12 ? 'Good morning' : timeOfDay < 17 ? 'Good afternoon' : 'Good evening';
       return {
-        reply: `😊 I'm doing great, thank you for asking${user ? ', ' + (user.fullName || '') : ''}! ${timeGreeting} and welcome to KVLR Styles! ✨\n\nI'm your AI Shopping Assistant — available 24/7 to help you with:\n• 🔍 Finding luxury products\n• 🚚 Tracking orders\n• 🎟️ Offers & coupons\n• 💳 Payment support\n\nHow can I assist you today?`,
+        reply: `😊 I'm doing great, thank you for asking${user ? ', ' + (user.fullName || '') : ''}! ${timeGreeting} and welcome to Styleverse! ✨\n\nI'm your AI Shopping Assistant — available 24/7 to help you with:\n• 🔍 Finding luxury products\n• 🚚 Tracking orders\n• 🎟️ Offers & coupons\n• 💳 Payment support\n\nHow can I assist you today?`,
         type: 'AI_RESPONSE',
         aiPowered: true,
         actions: [
@@ -153,7 +153,7 @@ class ChatbotService {
     // Simple greetings ("hi", "hello") — welcome message
     if (this.isGreetingQuery(q)) {
       return {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -180,7 +180,7 @@ class ChatbotService {
     // Farewell
     if (this.isFarewellQuery(q)) {
       return {
-        reply: `👋 Goodbye${user ? ', ' + (user.fullName || '') : ''}! Thank you for shopping with KVLR Styles. Have a wonderful day! Feel free to come back anytime — I'm always here to help. 🌟`,
+        reply: `👋 Goodbye${user ? ', ' + (user.fullName || '') : ''}! Thank you for shopping with Styleverse. Have a wonderful day! Feel free to come back anytime — I'm always here to help. 🌟`,
         type: 'INFO',
         actions: [{ label: '🏠 Back to Store', action: 'STORE_HOME' }]
       };
@@ -189,7 +189,7 @@ class ChatbotService {
     // About the bot
     if (this.isAboutBotQuery(q)) {
       return {
-        reply: `🤖 I'm the **KVLR Styles AI Shopping Assistant**! I'm here to help you with:\n\n• 🔍 Finding luxury products (clothes, jewelry, accessories)\n• 🚚 Tracking your orders in real-time\n• 🔄 Returns & refund information\n• 💳 Payment options & active offers\n• 🎟️ Coupons & discounts\n• 👨‍💻 Connecting you with human support\n\nJust ask me anything!`,
+        reply: `🤖 I'm the **Styleverse AI Shopping Assistant**! I'm here to help you with:\n\n• 🔍 Finding luxury products (clothes, jewelry, accessories)\n• 🚚 Tracking your orders in real-time\n• 🔄 Returns & refund information\n• 💳 Payment options & active offers\n• 🎟️ Coupons & discounts\n• 👨‍💻 Connecting you with human support\n\nJust ask me anything!`,
         type: 'INFO',
         actions: [
           { label: '🔍 Find a Product', action: 'SEARCH_PRODUCT' },
@@ -215,7 +215,7 @@ class ChatbotService {
     // Short/simple query fallback — default to welcome greeting
     if (q.length < 10) {
       return {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I'm your AI Shopping Assistant — here to help you find luxury fashion, track orders, check offers, and more. How can I assist you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -264,7 +264,7 @@ class ChatbotService {
     // 2.7 — Greetings (hi, hello, hlo, helo, etc.)
     if (this.isGreetingQuery(q)) {
       return {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant. How can I help you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I'm your AI Shopping Assistant. How can I help you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -352,7 +352,7 @@ class ChatbotService {
     // 9. Simple greetings ("hi", "hello", "hey")
     if (this.isGreetingQuery(q)) {
       return {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I am your AI Shopping Assistant. How can I help you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -443,7 +443,7 @@ class ChatbotService {
     // Greetings (hi, hello, hlo, helo, etc.)
     if (this.isGreetingQuery(q)) {
       return { streamed: false, data: {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I'm your AI Shopping Assistant. How can I help you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I'm your AI Shopping Assistant. How can I help you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },
@@ -502,7 +502,7 @@ class ChatbotService {
     }
     if (this.isGreetingQuery(q)) {
       return { streamed: false, data: {
-        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to KVLR Styles. I am your AI Shopping Assistant. How can I help you today?`,
+        reply: `👋 Hello${user ? ' ' + (user.fullName || 'there') : ''}! Welcome to Styleverse. I am your AI Shopping Assistant. How can I help you today?`,
         type: 'GREETING',
         actions: [
           { label: '🚚 Track My Order', action: 'TRACK_ORDER' },

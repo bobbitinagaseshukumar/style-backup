@@ -142,7 +142,7 @@ const useRazorpay = () => {
         key: keyId || RAZORPAY_KEY_ID,
         amount: amountInPaise,
         currency,
-        name: storeSettings?.storeName || 'KVLR Styles',
+        name: storeSettings?.storeName || 'Styleverse',
         description: receipt || 'Order Payment',
         order_id: razorpayOrderId,
         prefill: {

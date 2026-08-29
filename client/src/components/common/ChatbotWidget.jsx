@@ -594,7 +594,7 @@ const ChatbotWidget = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    KVLR AI Assistant <FiStar className="w-3.5 h-3.5 text-gold-400 fill-gold-400" />
+                    Styleverse AI Assistant <FiStar className="w-3.5 h-3.5 text-gold-400 fill-gold-400" />
                   </h3>
                   <span className="text-[10px] text-emerald-400 font-semibold">● Online • 24/7 Active</span>
                 </div>

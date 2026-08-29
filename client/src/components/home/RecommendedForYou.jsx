@@ -19,20 +19,33 @@ const RecommendedForYou = () => {
     const fetchRecommendations = async () => {
       try {
         const res = await api.get('/ai/personalized?limit=8');
-        if (isMounted && res.data?.success && res.data?.data?.products) {
+        if (isMounted && res.data?.success && res.data?.data?.products?.length > 0) {
           setRecommendations(res.data.data.products);
           if (res.data.data.reason) {
             setReason(res.data.data.reason);
           }
+          return;
         }
       } catch (err) {
-        console.warn('[RecommendedForYou] Fetch notice:', err.message);
-      } finally {
-        if (isMounted) setLoading(false);
+        console.warn('[RecommendedForYou] AI fetch notice:', err.message);
       }
+      // Fallback: fetch popular/featured products directly
+      try {
+        const fallback = await api.get('/products?limit=8&sort=newest');
+        const prods = fallback.data?.data?.products || fallback.data?.data || [];
+        if (isMounted && Array.isArray(prods) && prods.length > 0) {
+          setRecommendations(prods);
+          setReason('Trending & Popular Luxury Picks');
+        }
+      } catch (fallbackErr) {
+        console.warn('[RecommendedForYou] Fallback notice:', fallbackErr.message);
+      }
+      if (isMounted) setLoading(false);
     };
 
-    fetchRecommendations();
+    fetchRecommendations().then(() => {
+      if (isMounted) setLoading(false);
+    });
     return () => { isMounted = false; };
   }, []);
 

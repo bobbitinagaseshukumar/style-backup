@@ -17,22 +17,21 @@ const RecentlyViewedSection = ({ currentId }) => {
   const [loaded, setLoaded] = useState(false);
 
   const fetchProducts = useCallback(async () => {
+    // Only show recently viewed for logged-in users
+    if (!user) {
+      setProducts([]);
+      setLoaded(true);
+      return;
+    }
     try {
-      if (user) {
-        // Logged-in user: fetch from server
-        const res = await api.get('/recently-viewed');
-        if (res.data?.success && Array.isArray(res.data?.data)) {
-          let items = res.data.data;
-          if (currentId) items = items.filter(p => p.id !== currentId);
-          setProducts(items);
-        } else {
-          // Fallback to localStorage
-          const local = getLocalRecentlyViewed();
-          if (currentId) setProducts(local.filter(p => (p.id || p._id) !== currentId));
-          else setProducts(local);
-        }
+      // Logged-in user: fetch from server
+      const res = await api.get('/recently-viewed');
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        let items = res.data.data;
+        if (currentId) items = items.filter(p => p.id !== currentId);
+        setProducts(items);
       } else {
-        // Guest user: read from localStorage
+        // Fallback to localStorage
         const local = getLocalRecentlyViewed();
         if (currentId) setProducts(local.filter(p => (p.id || p._id) !== currentId));
         else setProducts(local);

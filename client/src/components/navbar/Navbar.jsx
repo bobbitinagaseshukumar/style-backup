@@ -43,7 +43,7 @@ const Navbar = () => {
   // Dynamic Header Navigation & Settings
   const [navItems, setNavItems] = useState(DEFAULT_NAV_ITEMS);
   const [headerSettings, setHeaderSettings] = useState(null);
-  const [storeName, setStoreName] = useState('KVLR Styles');
+  const [storeName, setStoreName] = useState('Styleverse');
 
   const navigate = useNavigate();
   const location = useLocation();

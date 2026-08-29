@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import api from '../../config/api';
 
 const DEFAULT_BRANDS = [
-  { id: 'b1', name: 'KVLR Couture', logoUrl: '👑' },
+  { id: 'b1', name: 'Styleverse Couture', logoUrl: '👑' },
   { id: 'b2', name: 'Royal Heritage', logoUrl: '💎' },
   { id: 'b3', name: 'Silk Weavers Guild', logoUrl: '🥻' },
   { id: 'b4', name: 'Kundan Artisan House', logoUrl: '✨' },

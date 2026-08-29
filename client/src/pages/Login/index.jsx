@@ -230,7 +230,7 @@ const Login = ({ initialMode }) => {
 
   const [storeSettings, setStoreSettings] = useState(null);
   const [authSettings, setAuthSettings] = useState(null);
-  const storeName = storeSettings?.storeName || 'KVLR Styles';
+  const storeName = storeSettings?.storeName || 'Styleverse';
 
   useEffect(() => {
     const fetchConfigs = async () => {

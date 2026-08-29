@@ -12,7 +12,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navRef = useRef(null);
   const menuScrollPos = useRef(0);
-  const storeName = storeSettings?.storeName || 'KVLR Styles';
+  const storeName = storeSettings?.storeName || 'Styleverse';
 
   const handleNavClick = (path) => {
     onClose();

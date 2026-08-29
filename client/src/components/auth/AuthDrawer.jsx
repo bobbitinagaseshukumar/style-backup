@@ -67,7 +67,7 @@ const AuthDrawer = ({ isOpen, onClose }) => {
   }
 
   let parsedUi = {
-    welcomeTitle: 'Welcome to ' + (storeSettings?.storeName || 'KVLR Styles'),
+    welcomeTitle: 'Welcome to ' + (storeSettings?.storeName || 'Styleverse'),
     loginButtonText: 'Sign In',
     registerButtonText: 'Create Account',
   };
@@ -249,7 +249,7 @@ const AuthDrawer = ({ isOpen, onClose }) => {
             <div>
               <div className="p-6 bg-charcoal-900 border-b border-gold-500/20 text-white flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">{(storeSettings?.storeName || 'KVLR STYLES').toUpperCase()} LUXURY</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gold-400">{(storeSettings?.storeName || 'STYLEVERSE').toUpperCase()} LUXURY</span>
                   <h2 className="text-xl font-serif font-bold mt-0.5">
                     {mode === 'login' ? (parsedUi.welcomeTitle || 'Customer Sign In') : (parsedUi.registerButtonText || 'Create Account')}
                   </h2>

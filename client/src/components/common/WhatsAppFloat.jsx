@@ -69,7 +69,7 @@ const WhatsAppFloat = () => {
                 <FaWhatsapp size={22} className="text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-black text-white">{settings.whatsappBusinessName || 'KVLR Styles'}</p>
+                <p className="text-sm font-black text-white">{settings.whatsappBusinessName || 'Styleverse'}</p>
                 <p className="text-[10px] text-white/80">
                   {settings.whatsappWorkingHours || 'Mon-Sat 9AM-7PM'} · Usually replies quickly
                 </p>

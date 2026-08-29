@@ -28,7 +28,7 @@ const Categories = () => {
   const [selectedCategory, setSelectedCategory] = useState(slug || '');
   const [selectedSubcategory, setSelectedSubcategory] = useState(initialSub);
   const [sortOption, setSortOption] = useState('newest');
-  const [maxPrice, setMaxPrice] = useState(20000);
+  const [maxPrice, setMaxPrice] = useState(999999);
   const [filterFeatured, setFilterFeatured] = useState(false);
   const [filterTrending, setFilterTrending] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -114,7 +114,7 @@ const Categories = () => {
     let isMounted = true;
 
     const fetchProducts = async () => {
-      let url = `/products?limit=50`;
+      let url = `/products?limit=200`;
 
       if (selectedCategory) {
         const foundCat = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
@@ -354,8 +354,8 @@ const Categories = () => {
               <input
                 type="range"
                 min={500}
-                max={50000}
-                step={500}
+                max={999999}
+                step={1000}
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
                 className="w-full accent-gold-500 cursor-pointer"
