@@ -57,7 +57,7 @@ async function main() {
     where: { email: 'styleverseshope@gmail.com' },
     update: { role: 'SUPER_ADMIN', isVerified: true },
     create: {
-      fullName: 'KVLR Styles Admin',
+      fullName: 'Styleverse Admin',
       email: 'styleverseshope@gmail.com',
       password: hashedPassword,
       role: 'SUPER_ADMIN',
